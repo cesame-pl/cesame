@@ -1,6 +1,6 @@
 all : cesame
 
-cesame : parser.cmo scanner.cmo ast.cmo sast.cmo
+cesame :parser.cmo scanner.cmo ast.cmo sast.cmo semant.cmo cesame.cmo
 	ocamlc -w A -o cesame $^
 
 %.cmo : %.ml
