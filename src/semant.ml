@@ -98,7 +98,7 @@ let check (globals, functions) =
         let (t1, e1') = check_expr e1
         and (t2, e2') = check_expr e2 in
         let err = "illegal binary operator " ^
-                  string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
+                  string_of_typ t1 ^ " " ^ string_of_binop op ^ " " ^
                   string_of_typ t2 ^ " in " ^ string_of_expr e
         in
         (* All binary operators require operands of the same type*)

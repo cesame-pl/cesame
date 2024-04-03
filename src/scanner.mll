@@ -20,6 +20,7 @@ rule token = parse
 | '+'      { PLUS }
 | '-'      { MINUS }
 | '='      { ASSIGN }
+| '!'      { NOT }
 | "=="     { EQ }
 | "!="     { NEQ }
 | '<'      { LT }
