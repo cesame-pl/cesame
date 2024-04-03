@@ -4,7 +4,7 @@
 open Ast
 %}
 
-%token SEMI LPAREN RPAREN LBRACE RBRACE PLUS MINUS ASSIGN
+%token SEMI LPAREN RPAREN LBRACE RBRACE MUL DIV MOD PLUS MINUS ASSIGN
 %token CONTINUE BREAK FOR FUNC ARROW
 %token NOT EQ NEQ LT AND OR
 %token IF ELSE WHILE INT BOOL
@@ -26,7 +26,7 @@ open Ast
 %left AND
 %left EQ NEQ
 %left LT
-%left PLUS MINUS
+%left MUL DIV MOD PLUS MINUS
 
 %%
 
@@ -94,6 +94,9 @@ expr:
   | STRLIT           { StrLit($1)             }
   | ID               { Id($1)                 }
   | NOT expr         { Unaop(Not, $2)         }
+  | expr MUL    expr { Binop($1, Mul,   $3)   }
+  | expr DIV    expr { Binop($1, Div,   $3)   }
+  | expr MOD    expr { Binop($1, Mod,   $3)   }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
   | expr EQ     expr { Binop($1, Equal, $3)   }

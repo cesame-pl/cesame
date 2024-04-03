@@ -1,7 +1,7 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
 type unaop = Not
-type binop = Add | Sub | Equal | Neq | Less | And | Or
+type binop = Mul | Div | Mod | Add | Sub | Equal | Neq | Less | And | Or
 
 type typ = Int | Bool | String
 
@@ -50,7 +50,10 @@ type program = bind list * func_def list
 let string_of_unaop = function
     Not -> "!"
 let string_of_binop = function
-    Add -> "+"
+    Mul -> "*"
+  | Div -> "/"
+  | Mod -> "%"
+  | Add -> "+"
   | Sub -> "-"
   | Equal -> "=="
   | Neq -> "!="
