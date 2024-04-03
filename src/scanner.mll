@@ -32,6 +32,11 @@ rule token = parse
 | "bool"   { BOOL }
 | "true"   { BLIT(true)  }
 | "false"  { BLIT(false) }
+| "continue" { CONTINUE }
+| "break" { BREAK }
+| "for" { FOR }
+| "Func" { FUNC }
+| "->" { ARROW }
 | digit+ as lem  { LITERAL(int_of_string lem) }
 | letter (digit | letter | '_')* as lem { ID(lem) }
 | eof { EOF }
