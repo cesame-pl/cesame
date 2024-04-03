@@ -2,13 +2,14 @@
 
 type op = Add | Sub | Equal | Neq | Less | And | Or
 
-type typ = Int | Bool | String
+type typ = Int | Bool | String | Array of typ | Void
 
 type expr =
     Literal of int
   | BoolLit of bool
   | Id of string
   | StrLit of string
+  | ArrayLit of expr list
   | Binop of expr * op * expr
   | Assign of string * expr
   (* function call *)
@@ -51,6 +52,12 @@ let rec string_of_expr = function
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | StrLit(s) -> String.escaped s
+  | ArrayLit(a) -> 
+    let rec string_of_list l = 
+      [] -> ""
+      | [element] -> string_of_expr element
+      | hd::tl -> (string_of_expr (hd)) ^ "," ^ (string_of_list (tl)) 
+    in "[" ^ string_of_list a ^ "]"
   | Id(s) -> s
   | Binop(e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
@@ -67,10 +74,12 @@ let rec string_of_stmt = function
                       string_of_stmt s1 ^ "else\n" ^ string_of_stmt s2
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
 
-let string_of_typ = function
+let rec string_of_typ = function
     Int -> "int"
   | Bool -> "bool"
   | String -> "String"
+  | Array(t) -> "Array<" ^ string_of_typ t ^ ">"
+  | Void -> ""
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 

@@ -85,6 +85,7 @@ let check (globals, functions) =
         Literal l -> (Int, SLiteral l)
       | BoolLit l -> (Bool, SBoolLit l)
       | StrLit s  -> (String, SStrLit s)
+      | ArrayLit l -> (let rec check_array a = )
       | Id var -> (type_of_identifier var, SId var)
       | Assign(var, e) as ex ->
         let lt = type_of_identifier var

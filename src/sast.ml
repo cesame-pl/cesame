@@ -7,6 +7,7 @@ and sx =
     SLiteral of int
   | SBoolLit of bool
   | SStrLit of string
+  | SArrayLit of sexpr list
   | SId of string
   | SBinop of sexpr * op * sexpr
   | SAssign of string * sexpr

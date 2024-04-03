@@ -13,6 +13,8 @@ rule token = parse
 | ')'      { RPAREN }
 | '{'      { LBRACE }
 | '}'      { RBRACE }
+| '['      { LSQBRACE }
+| ']'      { RSQBRACE }
 | ';'      { SEMI }
 (* COMMA *)
 | ','      { COMMA }
@@ -32,6 +34,7 @@ rule token = parse
 | "int"    { INT }
 | "bool"   { BOOL }
 | "String" { STRING }
+| "Array"  { ARRAY }
 | "true"   { BLIT(true)  }
 | "false"  { BLIT(false) }
 | '"'      { let s = "" in strparse s lexbuf }

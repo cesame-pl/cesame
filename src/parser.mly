@@ -4,7 +4,7 @@
 open Ast
 %}
 
-%token SEMI LPAREN RPAREN LBRACE RBRACE PLUS MINUS ASSIGN
+%token SEMI LPAREN RPAREN LBRACE RBRACE PLUS MINUS ASSIGN LSQBRACE RSQBRACE
 %token EQ NEQ LT AND OR
 %token IF ELSE WHILE INT BOOL
 /* return, COMMA token */
@@ -49,6 +49,7 @@ typ:
     INT   { Int   }
   | BOOL  { Bool  }
   | STRING { String }
+  | ARRAY LT typ RT {Array($3)}
 
 /* fdecl */
 fdecl:
@@ -90,6 +91,7 @@ expr:
     LITERAL          { Literal($1)            }
   | BLIT             { BoolLit($1)            }
   | STRLIT           { StrLit($1)             }
+  | LSQBRACE elements RSQBRACE { ArrayLit($2) }
   | ID               { Id($1)                 }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
@@ -107,6 +109,10 @@ expr:
 args_opt:
   /*nothing*/ { [] }
   | args { $1 }
+
+elements:
+  expr { [$1] }
+| expr COMMA elements { $1::$3 }
 
 args:
   expr  { [$1] }
