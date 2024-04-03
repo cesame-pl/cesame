@@ -9,9 +9,11 @@ open Ast
 %token IF ELSE WHILE INT BOOL
 /* return, COMMA token */
 %token RETURN COMMA
+%token STRING
 %token <int> LITERAL
 %token <bool> BLIT
 %token <string> ID
+%token <string> STRLIT
 %token EOF
 
 %start program
@@ -46,6 +48,7 @@ vdecl:
 typ:
     INT   { Int   }
   | BOOL  { Bool  }
+  | STRING { String }
 
 /* fdecl */
 fdecl:
@@ -86,6 +89,7 @@ stmt:
 expr:
     LITERAL          { Literal($1)            }
   | BLIT             { BoolLit($1)            }
+  | STRLIT           { StrLit($1)             }
   | ID               { Id($1)                 }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
