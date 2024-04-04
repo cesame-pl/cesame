@@ -1,5 +1,5 @@
 # Cesame
-Cesame: A C-like programming language that features native support for first-class func- tions. Cesame also supports non-primitive types such as String, Array, and Struct. Cesame abstracts away pointers and stores most data on the heap, except for primitives and refer- ences to objects, similar to Java. The compiler is written in OCaml with C libraries and targets LLVM IR.
+Cesame: A C-like programming language that features native support for first-class functions. Cesame also supports non-primitive types such as String, Array, and Struct. Cesame abstracts away pointers and stores most data on the heap, except for primitives and references to objects, similar to Java. The compiler is written in OCaml with C libraries and targets LLVM IR.
 
 ## Testing
 ```
@@ -28,16 +28,20 @@ make
     - Implemented Unary Operators: !
     - Implemented Binary Operators: *, /, %, ++, --
 - Array (by Qian)
+- if-elif-else (by Teng)
 
 ## Work Remaining
-- **Timeline:** As soon as possible
+- **Timeline:**
+    - Before Apr 10th: Complete scanner, parser, and semantic checker.
+    - After Apr 10th: Codegen.
+- TODO:
+    - Restructure the program (we don't want to use main() as the entrance to the program)
+    - Shortcut for declaration and definition on the same line
+    - Structures
+    - First-class Functions
+    - Statements
+        - for Statements
 
-- Structures
-- Functions
-- Statements
-    - if Statements
-    - for Statements
-- Codegen
 
 ## Functionalities
 
