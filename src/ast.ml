@@ -35,6 +35,14 @@ type func_def = {
   body: stmt list;
 }
 
+(* type first_class_func_def = {
+  rtyp: typ;
+  fname: string;
+  formals: bind list;
+  locals: bind list;
+  body: stmt list;
+} *)
+
 type program = bind list * func_def list
 
 (* Pretty-printing functions *)
