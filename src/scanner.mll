@@ -26,6 +26,8 @@ rule token = parse
 | '+'      { PLUS }
 | '-'      { MINUS }
 | '='      { ASSIGN }
+| "++"     { INC }
+| "--"     { DEC }
 | '!'      { NOT }
 | "=="     { EQ }
 | "!="     { NEQ }

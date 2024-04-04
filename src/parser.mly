@@ -4,7 +4,7 @@
 open Ast
 %}
 
-%token SEMI LPAREN RPAREN LBRACE RBRACE MUL DIV MOD PLUS MINUS ASSIGN LSQBRACE RSQBRACE
+%token SEMI LPAREN RPAREN LBRACE RBRACE MUL DIV MOD PLUS MINUS ASSIGN INC DEC LSQBRACE RSQBRACE
 %token CONTINUE BREAK FOR FUNC ARROW
 %token NOT GE LE GT LT EQ NEQ AND OR
 %token IF ELSE WHILE INT CHAR BOOL ARRAY
@@ -113,6 +113,8 @@ expr:
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
   | ID ASSIGN expr   { Assign($1, $3)         }
+  | ID INC           { Assign($1, Binop(Id($1), Add, Literal(1))) }
+  | ID DEC           { Assign($1, Binop(Id($1), Sub, Literal(1))) }
   | LPAREN expr RPAREN { $2                   }
   /* call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3)  }
