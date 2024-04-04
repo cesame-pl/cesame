@@ -24,8 +24,10 @@ rule token = parse
 | '<'      { LT }
 | "&&"     { AND }
 | "||"     { OR }
+(* IF...ELIF...ELSE *)
 | "if"     { IF }
 | "else"   { ELSE }
+| "elif"   { ELIF }
 | "while"  { WHILE }
 (* RETURN *)
 | "return" { RETURN }

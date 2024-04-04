@@ -7,7 +7,7 @@ open Ast
 %token SEMI LPAREN RPAREN LBRACE RBRACE PLUS MINUS ASSIGN
 %token CONTINUE BREAK FOR FUNC ARROW
 %token EQ NEQ LT AND OR
-%token IF ELSE WHILE INT BOOL
+%token IF ELIF ELSE WHILE INT BOOL
 /* return, COMMA token */
 %token RETURN COMMA
 %token STRING
@@ -20,6 +20,8 @@ open Ast
 %start program
 %type <Ast.program> program
 
+%nonassoc NOELSE
+%nonassoc ELSE
 %right ASSIGN
 %left OR
 %left AND
@@ -80,12 +82,18 @@ stmt_list:
 stmt:
     expr SEMI                               { Expr $1      }
   | LBRACE stmt_list RBRACE                 { Block $2 }
-  /* if (condition) { block1} else {block2} */
+  /* if (condition) { block1 } else { block2 } */
   /* if (condition) stmt else stmt */
-  | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7) }
+  /* if (condition) stmt (elif stmt)+ NOELSE*/
+  | ifelifstmt ELSE stmt    { If($1, $3) }
+  | ifelifstmt %prec NOELSE { If($1, Expr(Noexpr))}
   | WHILE LPAREN expr RPAREN stmt           { While ($3, $5)  }
   /* return */
   | RETURN expr SEMI                        { Return $2      }
+
+ifelifstmt:
+ IF LPAREN expr RPAREN stmt { [($3, $5)] }
+ | ifelifstmt ELIF LPAREN expr RPAREN stmt {($4, $6)::$1}
 
 expr:
     LITERAL          { Literal($1)            }
