@@ -2,26 +2,39 @@
 
 { open Parser }
 
+let squote = '\''
 let digit = ['0'-'9']
 let letter = ['a'-'z' 'A'-'Z']
 let heading_spaces = ('\r' | '\n' | "\r\n") [' ' '\t']*
 
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
-| "/*"     { comment lexbuf }           (* Comments *)
+| "/*"     { gcomment lexbuf }          (* General Comments *)
+| "//"     { lcomment lexbuf }          (* Line Comments *)
 | '('      { LPAREN }
 | ')'      { RPAREN }
 | '{'      { LBRACE }
 | '}'      { RBRACE }
+| '['      { LSQBRACE }
+| ']'      { RSQBRACE }
 | ';'      { SEMI }
 (* COMMA *)
 | ','      { COMMA }
+| '*'      { MUL }
+| '/'      { DIV }
+| '%'      { MOD }
 | '+'      { PLUS }
 | '-'      { MINUS }
 | '='      { ASSIGN }
+| "++"     { INC }
+| "--"     { DEC }
+| '!'      { NOT }
 | "=="     { EQ }
 | "!="     { NEQ }
 | '<'      { LT }
+| '>'      { GT }
+| ">="     { GE }
+| "<="     { LE }
 | "&&"     { AND }
 | "||"     { OR }
 (* IF...ELIF...ELSE *)
@@ -32,8 +45,10 @@ rule token = parse
 (* RETURN *)
 | "return" { RETURN }
 | "int"    { INT }
+| "char"   { CHAR }
 | "bool"   { BOOL }
 | "String" { STRING }
+| "Array"  { ARRAY }
 | "true"   { BLIT(true)  }
 | "false"  { BLIT(false) }
 | "continue" { CONTINUE }
@@ -43,13 +58,24 @@ rule token = parse
 | "->" { ARROW }
 | '"'      { let s = "" in strparse s lexbuf }
 | digit+ as lem  { LITERAL(int_of_string lem) }
+| squote _ squote as lem { CLIT(lem.[1]) }
+| squote '\\' ('n' | 't' | '\\' | '\'') squote as lem { 
+  let c = match lem.[2] with
+          | 'n' -> '\n'
+          | 't' -> '\t'
+          | '\\' -> '\\'
+          | '\'' -> '\''
+  in CLIT(c)  }
 | letter (digit | letter | '_')* as lem { ID(lem) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
 
-and comment = parse
+and gcomment = parse
   "*/" { token lexbuf }
-| _    { comment lexbuf }
+| _    { gcomment lexbuf }
+and lcomment = parse 
+  '\n' { token lexbuf }
+| _    { lcomment lexbuf }
 
 and strparse s = parse
   '"'  { STRLIT(Scanf.unescaped s)}

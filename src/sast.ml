@@ -7,8 +7,10 @@ and sx =
     SLiteral of int
   | SBoolLit of bool
   | SStrLit of string
+  | SArrayLit of sexpr list
   | SId of string
-  | SBinop of sexpr * op * sexpr
+  | SUnaop of unaop * sexpr
+  | SBinop of sexpr * binop * sexpr
   | SAssign of string * sexpr
   (* call *)
   | SCall of string * sexpr list
@@ -41,9 +43,16 @@ let rec string_of_sexpr (t, e) =
       | SBoolLit(true) -> "true"
       | SBoolLit(false) -> "false"
       | SStrLit(s) -> String.escaped s
+      | SArrayLit(a) -> let rec string_of_list a = match a with
+          [] -> ""
+          | [element] -> string_of_sexpr element
+          | hd::tl -> (string_of_sexpr (hd)) ^ "," ^ (string_of_list (tl)) 
+        in "[" ^ string_of_list a ^ "]"
       | SId(s) -> s
+      | SUnaop(o, e) -> 
+        string_of_unaop o ^ string_of_sexpr e
       | SBinop(e1, o, e2) ->
-        string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
+        string_of_sexpr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_sexpr e2
       | SAssign(v, e) -> v ^ " = " ^ string_of_sexpr e
       | SCall(f, el) ->
           f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"

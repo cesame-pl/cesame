@@ -4,14 +4,15 @@
 open Ast
 %}
 
-%token SEMI LPAREN RPAREN LBRACE RBRACE PLUS MINUS ASSIGN
+%token SEMI LPAREN RPAREN LBRACE RBRACE MUL DIV MOD PLUS MINUS ASSIGN INC DEC LSQBRACE RSQBRACE
 %token CONTINUE BREAK FOR FUNC ARROW
-%token EQ NEQ LT AND OR
-%token IF ELIF ELSE WHILE INT BOOL
+%token NOT GE LE GT LT EQ NEQ AND OR
+%token IF ELIF ELSE WHILE INT CHAR BOOL ARRAY
 /* return, COMMA token */
 %token RETURN COMMA
 %token STRING
 %token <int> LITERAL
+%token <char> CLIT
 %token <bool> BLIT
 %token <string> ID
 %token <string> STRLIT
@@ -23,11 +24,12 @@ open Ast
 %nonassoc NOELSE
 %nonassoc ELSE
 %right ASSIGN
+%right NOT
 %left OR
 %left AND
 %left EQ NEQ
-%left LT
-%left PLUS MINUS
+%left GE LE GT LT
+%left MUL DIV MOD PLUS MINUS
 
 %%
 
@@ -50,8 +52,10 @@ vdecl:
 
 typ:
     INT   { Int   }
+  | CHAR  { Char  }
   | BOOL  { Bool  }
   | STRING { String }
+  | ARRAY LT typ GT {Array($3)}
 
 /* fdecl */
 fdecl:
@@ -97,17 +101,28 @@ ifelifstmt:
 
 expr:
     LITERAL          { Literal($1)            }
+  | CLIT             { CharLit($1)            }
   | BLIT             { BoolLit($1)            }
   | STRLIT           { StrLit($1)             }
+  | LSQBRACE elements RSQBRACE { ArrayLit($2) }
   | ID               { Id($1)                 }
+  | NOT expr         { Unaop(Not, $2)         }
+  | expr MUL    expr { Binop($1, Mul,   $3)   }
+  | expr DIV    expr { Binop($1, Div,   $3)   }
+  | expr MOD    expr { Binop($1, Mod,   $3)   }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
+  | expr GE     expr { Binop($1, Ge,    $3)   }
+  | expr LE     expr { Binop($1, Le,    $3)   }
+  | expr GT     expr { Binop($1, Gt,    $3)   }
+  | expr LT     expr { Binop($1, Lt,    $3)   }
   | expr EQ     expr { Binop($1, Equal, $3)   }
   | expr NEQ    expr { Binop($1, Neq, $3)     }
-  | expr LT     expr { Binop($1, Less,  $3)   }
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
   | ID ASSIGN expr   { Assign($1, $3)         }
+  | ID INC           { Assign($1, Binop(Id($1), Add, Literal(1))) }
+  | ID DEC           { Assign($1, Binop(Id($1), Sub, Literal(1))) }
   | LPAREN expr RPAREN { $2                   }
   /* call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3)  }
@@ -116,6 +131,11 @@ expr:
 args_opt:
   /*nothing*/ { [] }
   | args { $1 }
+
+elements:
+  /*nothing*/ { [] }
+|  expr { [$1] }
+| expr COMMA elements { $1::$3 }
 
 args:
   expr  { [$1] }
