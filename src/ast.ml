@@ -7,7 +7,7 @@ type typ = Int | Char | Bool | String | Array of typ | Void
 
 type expr =
   Noexpr
-  |  Literal of int
+  | Literal of int
   | CharLit of char
   | BoolLit of bool
   | Id of string
