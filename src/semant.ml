@@ -167,8 +167,8 @@ let check (globals, functions) =
          follows any Return statement.  Nested blocks are flattened. *)
         Block sl -> SBlock (check_stmt_list sl)
       | Expr e -> SExpr (check_expr e)
-      | If(e, st1, st2) ->
-        SIf(check_bool_expr e, check_stmt st1, check_stmt st2)
+      (* | If(e, st1, st2) ->
+        SIf(check_bool_expr e, check_stmt st1, check_stmt st2) *)
       | While(e, st) ->
         SWhile(check_bool_expr e, check_stmt st)
       | Return e ->
