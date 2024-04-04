@@ -42,6 +42,11 @@ let rec string_of_sexpr (t, e) =
       | SBoolLit(true) -> "true"
       | SBoolLit(false) -> "false"
       | SStrLit(s) -> String.escaped s
+      | SArrayLit(a) -> let rec string_of_list a = match a with
+          [] -> ""
+          | [element] -> string_of_sexpr element
+          | hd::tl -> (string_of_sexpr (hd)) ^ "," ^ (string_of_list (tl)) 
+        in "[" ^ string_of_list a ^ "]"
       | SId(s) -> s
       | SBinop(e1, o, e2) ->
         string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2

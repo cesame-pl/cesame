@@ -53,7 +53,7 @@ let rec string_of_expr = function
   | BoolLit(false) -> "false"
   | StrLit(s) -> String.escaped s
   | ArrayLit(a) -> 
-    let rec string_of_list l = 
+    let rec string_of_list a = match a with
       [] -> ""
       | [element] -> string_of_expr element
       | hd::tl -> (string_of_expr (hd)) ^ "," ^ (string_of_list (tl)) 

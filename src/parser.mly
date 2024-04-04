@@ -5,8 +5,8 @@ open Ast
 %}
 
 %token SEMI LPAREN RPAREN LBRACE RBRACE PLUS MINUS ASSIGN LSQBRACE RSQBRACE
-%token EQ NEQ LT AND OR
-%token IF ELSE WHILE INT BOOL
+%token EQ NEQ LT GT AND OR
+%token IF ELSE WHILE INT BOOL ARRAY
 /* return, COMMA token */
 %token RETURN COMMA
 %token STRING
@@ -49,7 +49,7 @@ typ:
     INT   { Int   }
   | BOOL  { Bool  }
   | STRING { String }
-  | ARRAY LT typ RT {Array($3)}
+  | ARRAY LT typ GT {Array($3)}
 
 /* fdecl */
 fdecl:
@@ -111,7 +111,8 @@ args_opt:
   | args { $1 }
 
 elements:
-  expr { [$1] }
+  /*nothing*/ { [] }
+|  expr { [$1] }
 | expr COMMA elements { $1::$3 }
 
 args:

@@ -24,6 +24,7 @@ rule token = parse
 | "=="     { EQ }
 | "!="     { NEQ }
 | '<'      { LT }
+| '>'      { GT }
 | "&&"     { AND }
 | "||"     { OR }
 | "if"     { IF }

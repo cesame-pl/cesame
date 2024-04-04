@@ -66,7 +66,12 @@ let check (globals, functions) =
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
     let check_assign lvaluet rvaluet err =
-      if lvaluet = rvaluet then lvaluet else raise (Failure err)
+      if lvaluet = rvaluet then lvaluet 
+      else match lvaluet with Array(a) -> (
+          match rvaluet with Array(Void) -> lvaluet
+          | _ -> raise (Failure err)
+      )
+      | _ ->  raise (Failure err)
     in
 
     (* Build local symbol table of variables for this function *)
@@ -85,7 +90,22 @@ let check (globals, functions) =
         Literal l -> (Int, SLiteral l)
       | BoolLit l -> (Bool, SBoolLit l)
       | StrLit s  -> (String, SStrLit s)
-      | ArrayLit l -> (let rec check_array a = )
+      | ArrayLit l -> let rec check_array_helper l prev_typ = (
+        match l with
+          [] -> prev_typ
+        | [element] -> (
+          if (prev_typ = fst (check_expr element)) then prev_typ
+          else raise (Failure ("Array type " ^ (string_of_typ prev_typ) ^ "inconcistent with type " ^ (string_of_typ (fst (check_expr element)))))
+        )
+        | hd::tl -> (
+            if (prev_typ = fst (check_expr hd)) then (check_array_helper tl prev_typ)else raise (Failure ("Array type " ^ (string_of_typ prev_typ) ^ "inconcistent with type " ^ (string_of_typ (fst (check_expr hd)))))
+        )
+      ) in let check_array l = (
+        match l with 
+          [] -> (Array(Void), SArrayLit [])
+          | hd::tl -> (Array(check_array_helper l (fst (check_expr hd))), SArrayLit (List.map (function x -> check_expr x) l))
+      ) in check_array l
+          
       | Id var -> (type_of_identifier var, SId var)
       | Assign(var, e) as ex ->
         let lt = type_of_identifier var
