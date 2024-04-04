@@ -7,11 +7,12 @@ open Ast
 %token SEMI LPAREN RPAREN LBRACE RBRACE MUL DIV MOD PLUS MINUS ASSIGN
 %token CONTINUE BREAK FOR FUNC ARROW
 %token NOT GE LE GT LT EQ NEQ AND OR
-%token IF ELSE WHILE INT BOOL
+%token IF ELSE WHILE INT CHAR BOOL
 /* return, COMMA token */
 %token RETURN COMMA
 %token STRING
 %token <int> LITERAL
+%token <char> CLIT
 %token <bool> BLIT
 %token <string> ID
 %token <string> STRLIT
@@ -49,6 +50,7 @@ vdecl:
 
 typ:
     INT   { Int   }
+  | CHAR  { Char  }
   | BOOL  { Bool  }
   | STRING { String }
 
@@ -90,6 +92,7 @@ stmt:
 
 expr:
     LITERAL          { Literal($1)            }
+  | CLIT             { CharLit($1)            }
   | BLIT             { BoolLit($1)            }
   | STRLIT           { StrLit($1)             }
   | ID               { Id($1)                 }

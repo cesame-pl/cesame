@@ -3,10 +3,11 @@
 type unaop = Not
 type binop = Mul | Div | Mod | Add | Sub | Equal | Neq | Ge | Le | Gt | Lt | And | Or
 
-type typ = Int | Bool | String
+type typ = Int | Char | Bool | String
 
 type expr =
     Literal of int
+  | CharLit of char
   | BoolLit of bool
   | Id of string
   | StrLit of string
@@ -66,6 +67,7 @@ let string_of_binop = function
 
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
+  | CharLit(c) -> Char.escaped c
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | StrLit(s) -> String.escaped s
@@ -89,6 +91,7 @@ let rec string_of_stmt = function
 
 let string_of_typ = function
     Int -> "int"
+  | Char -> "char"
   | Bool -> "bool"
   | String -> "String"
 
