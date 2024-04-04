@@ -1,7 +1,7 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
 type unaop = Not
-type binop = Mul | Div | Mod | Add | Sub | Equal | Neq | Less | And | Or
+type binop = Mul | Div | Mod | Add | Sub | Equal | Neq | Ge | Le | Gt | Lt | And | Or
 
 type typ = Int | Bool | String
 
@@ -55,9 +55,12 @@ let string_of_binop = function
   | Mod -> "%"
   | Add -> "+"
   | Sub -> "-"
+  | Ge -> ">="
+  | Le -> "<="
+  | Gt -> ">"
+  | Lt -> "<"
   | Equal -> "=="
   | Neq -> "!="
-  | Less -> "<"
   | And -> "&&"
   | Or -> "||"
 
