@@ -90,7 +90,7 @@ stmt:
   /* if (condition) stmt else stmt */
   /* if (condition) stmt (elif stmt)+ NOELSE*/
   | ifelifstmt ELSE stmt    { If($1, $3) }
-  | ifelifstmt %prec NOELSE { If($1, Expr(Noexpr))}
+  | ifelifstmt %prec NOELSE { If($1, Expr(Noexpr)) }
   | WHILE LPAREN expr RPAREN stmt           { While ($3, $5)  }
   /* return */
   | RETURN expr SEMI                        { Return $2      }
