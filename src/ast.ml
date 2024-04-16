@@ -3,13 +3,14 @@
 type unaop = Not
 type binop = Mul | Div | Mod | Add | Sub | Equal | Neq | Ge | Le | Gt | Lt | And | Or
 
-type typ = Int | Char | Bool | String | Array of typ | Void
+type typ = Int | Char | Bool | Float | String | Array of typ | Void
 
 type expr =
   Noexpr
   | Literal of int
   | CharLit of char
   | BoolLit of bool
+  | FloatLit of float
   | Id of string
   | StrLit of string
   | ArrayLit of expr list
@@ -73,6 +74,7 @@ let rec string_of_expr = function
   | CharLit(c) -> Char.escaped c
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
+  | FloatLit(f) -> string_of_float f
   | StrLit(s) -> String.escaped s
   | ArrayLit(a) -> 
     let rec string_of_list a = match a with
@@ -117,6 +119,7 @@ let rec string_of_typ = function
     Int -> "int"
   | Char -> "char"
   | Bool -> "bool"
+  | Float -> "float"
   | String -> "String"
   | Array(t) -> "Array<" ^ string_of_typ t ^ ">"
   | Void -> ""

@@ -7,12 +7,13 @@ open Ast
 %token SEMI LPAREN RPAREN LBRACE RBRACE MUL DIV MOD PLUS MINUS ASSIGN INC DEC LSQBRACE RSQBRACE
 %token CONTINUE BREAK FOR FUNC ARROW
 %token NOT GE LE GT LT EQ NEQ AND OR
-%token IF ELIF ELSE WHILE INT CHAR BOOL ARRAY
+%token IF ELIF ELSE WHILE INT CHAR BOOL FLOAT ARRAY
 %token RETURN COMMA
 %token STRING
 %token <int> LITERAL
 %token <char> CLIT
 %token <bool> BLIT
+%token <float> FLIT
 %token <string> ID
 %token <string> STRLIT
 %token EOF
@@ -54,6 +55,7 @@ typ:
     INT   { Int   }
   | CHAR  { Char  }
   | BOOL  { Bool  }
+  | FLOAT { Float }
   | STRING { String }
   | ARRAY LT typ GT { Array($3) }
 
@@ -103,6 +105,7 @@ expr:
     LITERAL          { Literal($1)            }
   | CLIT             { CharLit($1)            }
   | BLIT             { BoolLit($1)            }
+  | FLIT             { FloatLit($1)           }
   | STRLIT           { StrLit($1)             }
   | LSQBRACE elements RSQBRACE { ArrayLit($2) }
   | ID               { Id($1)                 }

@@ -3,9 +3,18 @@
 { open Parser }
 
 let squote = '\''
-let digit = ['0'-'9']
 let letter = ['a'-'z' 'A'-'Z']
 let heading_spaces = ('\r' | '\n' | "\r\n") [' ' '\t']*
+
+let exp = ('e'|'E')
+let sign = ('+'|'-')
+let digit = ['0'-'9']
+let int = sign? digit+
+let float = (
+  int? '.' digit+ (exp int)? |
+  int '.' digit* (exp int)? |
+  int exp int
+)
 
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
@@ -47,6 +56,7 @@ rule token = parse
 | "int"    { INT }
 | "char"   { CHAR }
 | "bool"   { BOOL }
+| "float"  { FLOAT }
 | "String" { STRING }
 | "Array"  { ARRAY }
 | "true"   { BLIT(true)  }
@@ -57,7 +67,8 @@ rule token = parse
 | "Func"   { FUNC }
 | "->"     { ARROW }
 | '"'      { let s = "" in strparse s lexbuf }
-| digit+ as lem  { LITERAL(int_of_string lem) }
+| int as lem  { LITERAL(int_of_string lem) }
+| float as lem { FLIT(float_of_string lem) }
 | squote _ squote as lem { CLIT(lem.[1]) }
 | squote '\\' ('n' | 't' | '\\' | '\'') squote as lem { 
   let c = match lem.[2] with
