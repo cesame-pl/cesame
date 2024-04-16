@@ -27,17 +27,16 @@ rule token = parse
 | '['      { LSQBRACE }
 | ']'      { RSQBRACE }
 | ';'      { SEMI }
-(* COMMA *)
 | ','      { COMMA }
-| '*'      { MUL }
-| '/'      { DIV }
-| '%'      { MOD }
-| '+'      { PLUS }
-| '-'      { MINUS }
-| '='      { ASSIGN }
+(* Operators *)
 | "++"     { INC }
 | "--"     { DEC }
 | '!'      { NOT }
+| '+'      { PLUS }
+| '-'      { MINUS }
+| '*'      { MUL }
+| '/'      { DIV }
+| '%'      { MOD }
 | "=="     { EQ }
 | "!="     { NEQ }
 | '<'      { LT }
@@ -46,27 +45,30 @@ rule token = parse
 | "<="     { LE }
 | "&&"     { AND }
 | "||"     { OR }
-(* IF...ELIF...ELSE *)
+| '='      { ASSIGN }
+(* Control Flow *)
 | "if"     { IF }
 | "else"   { ELSE }
 | "elif"   { ELIF }
+| "for"    { FOR }
 | "while"  { WHILE }
-(* RETURN *)
+| "continue" { CONTINUE }
+| "break"  { BREAK }
 | "return" { RETURN }
+(* Types *)
 | "int"    { INT }
 | "char"   { CHAR }
 | "bool"   { BOOL }
 | "float"  { FLOAT }
 | "String" { STRING }
 | "Array"  { ARRAY }
-| "true"   { BLIT(true)  }
-| "false"  { BLIT(false) }
-| "continue" { CONTINUE }
-| "break"  { BREAK }
-| "for"    { FOR }
 | "Func"   { FUNC }
 | "->"     { ARROW }
-| '"'      { let s = "" in strparse s lexbuf }
+(* ID *)
+| letter (digit | letter | '_')* as lem { ID(lem) }
+(* Literals *)
+| "true"   { BLIT(true)  }
+| "false"  { BLIT(false) }
 | int as lem  { LITERAL(int_of_string lem) }
 | float as lem { FLIT(float_of_string lem) }
 | squote _ squote as lem { CLIT(lem.[1]) }
@@ -77,7 +79,8 @@ rule token = parse
           | '\\' -> '\\'
           | '\'' -> '\''
   in CLIT(c)  }
-| letter (digit | letter | '_')* as lem { ID(lem) }
+| '"'      { let s = "" in strparse s lexbuf }
+
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
 | eof       { EOF }
 
