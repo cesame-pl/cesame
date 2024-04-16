@@ -8,7 +8,6 @@ open Ast
 %token CONTINUE BREAK FOR FUNC ARROW
 %token NOT GE LE GT LT EQ NEQ AND OR
 %token IF ELIF ELSE WHILE INT CHAR BOOL ARRAY
-/* return, COMMA token */
 %token RETURN COMMA
 %token STRING
 %token <int> LITERAL
@@ -23,6 +22,7 @@ open Ast
 
 %nonassoc NOELSE
 %nonassoc ELSE
+%nonassoc INC DEC
 %right ASSIGN
 %right NOT
 %left OR

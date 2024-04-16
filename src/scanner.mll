@@ -52,10 +52,10 @@ rule token = parse
 | "true"   { BLIT(true)  }
 | "false"  { BLIT(false) }
 | "continue" { CONTINUE }
-| "break" { BREAK }
-| "for" { FOR }
-| "Func" { FUNC }
-| "->" { ARROW }
+| "break"  { BREAK }
+| "for"    { FOR }
+| "Func"   { FUNC }
+| "->"     { ARROW }
 | '"'      { let s = "" in strparse s lexbuf }
 | digit+ as lem  { LITERAL(int_of_string lem) }
 | squote _ squote as lem { CLIT(lem.[1]) }
@@ -67,8 +67,8 @@ rule token = parse
           | '\'' -> '\''
   in CLIT(c)  }
 | letter (digit | letter | '_')* as lem { ID(lem) }
-| eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
+| eof       { EOF }
 
 and gcomment = parse
   "*/" { token lexbuf }
