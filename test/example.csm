@@ -10,9 +10,10 @@ int gcd(int a, int b) {
 }
 
 int main() {
+  String s;
   int x;
   int y;
-  String s;
+  s = "";
   a = 18;
   b = 9;
   x = 2;

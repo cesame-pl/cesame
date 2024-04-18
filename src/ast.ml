@@ -1,16 +1,19 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type op = Add | Sub | Equal | Neq | Less | And | Or
+type unaop = Not
+type binop = Mul | Div | Mod | Add | Sub | Equal | Neq | Ge | Le | Gt | Lt | And | Or
 
-type typ = Int | Bool | String | Array of typ | Void
+type typ = Int | Char | Bool | String | Array of typ | Void
 
 type expr =
     Literal of int
+  | CharLit of char
   | BoolLit of bool
   | Id of string
   | StrLit of string
   | ArrayLit of expr list
-  | Binop of expr * op * expr
+  | Unaop of unaop * expr
+  | Binop of expr * binop * expr
   | Assign of string * expr
   (* function call *)
   | Call of string * expr list
@@ -35,32 +38,51 @@ type func_def = {
   body: stmt list;
 }
 
+(* type first_class_func_def = {
+  rtyp: typ;
+  fname: string;
+  formals: bind list;
+  locals: bind list;
+  body: stmt list;
+} *)
+
 type program = bind list * func_def list
 
 (* Pretty-printing functions *)
-let string_of_op = function
-    Add -> "+"
+let string_of_unaop = function
+    Not -> "!"
+let string_of_binop = function
+    Mul -> "*"
+  | Div -> "/"
+  | Mod -> "%"
+  | Add -> "+"
   | Sub -> "-"
+  | Ge -> ">="
+  | Le -> "<="
+  | Gt -> ">"
+  | Lt -> "<"
   | Equal -> "=="
   | Neq -> "!="
-  | Less -> "<"
   | And -> "&&"
   | Or -> "||"
 
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
+  | CharLit(c) -> Char.escaped c
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | StrLit(s) -> String.escaped s
   | ArrayLit(a) -> 
-    let rec string_of_list l = 
+    let rec string_of_list a = match a with
       [] -> ""
       | [element] -> string_of_expr element
       | hd::tl -> (string_of_expr (hd)) ^ "," ^ (string_of_list (tl)) 
     in "[" ^ string_of_list a ^ "]"
   | Id(s) -> s
+  | Unaop(o, e) ->
+    string_of_unaop o ^ string_of_expr e
   | Binop(e1, o, e2) ->
-    string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
+    string_of_expr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_expr e2
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
@@ -76,6 +98,7 @@ let rec string_of_stmt = function
 
 let rec string_of_typ = function
     Int -> "int"
+  | Char -> "char"
   | Bool -> "bool"
   | String -> "String"
   | Array(t) -> "Array<" ^ string_of_typ t ^ ">"
