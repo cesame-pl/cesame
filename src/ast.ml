@@ -23,12 +23,12 @@ type expr =
 type stmt =
     Block of stmt list
   | Expr of expr
+  | VDecl of typ * string * expr option
   (* if ... elif ... else ... *)
   | If of (expr * stmt) list * stmt
   | While of expr * stmt
   (* return *)
   | Return of expr
-  | VDecl of typ * string * expr option
 
 (* int x: name binding *)
 type bind = typ * string
@@ -71,6 +71,15 @@ let string_of_binop = function
   | And -> "&&"
   | Or -> "||"
 
+let rec string_of_typ = function
+    Int -> "int"
+  | Char -> "char"
+  | Bool -> "bool"
+  | Float -> "float"
+  | String -> "String"
+  | Array(t) -> "Array<" ^ string_of_typ t ^ ">"
+  | Void -> ""
+
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | CharLit(c) -> Char.escaped c
@@ -106,6 +115,7 @@ let rec string_of_stmt = function
     Block(stmts) ->
     "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
   | Expr(expr) -> string_of_expr expr ^ ";\n"
+  | VDecl(t, s, e) -> string_of_typ t ^ " " ^ s ^ (match e with None -> "" | Some(e) -> " = " ^ string_of_expr e) ^ ";\n"
   | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n"
   | If(e_s_l,Expr(Noexpr)) -> let string_of_if ((e, s)) =
     "if (" ^ string_of_expr e ^ ")\n" ^ (string_of_stmt s)
@@ -116,15 +126,6 @@ let rec string_of_stmt = function
     in String.concat (" " ^ "el") (List.map string_of_if e_s_l) ^
     (" ") ^ "else\n" ^ (string_of_stmt s)
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
-
-let rec string_of_typ = function
-    Int -> "int"
-  | Char -> "char"
-  | Bool -> "bool"
-  | Float -> "float"
-  | String -> "String"
-  | Array(t) -> "Array<" ^ string_of_typ t ^ ">"
-  | Void -> ""
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 

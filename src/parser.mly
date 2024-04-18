@@ -87,6 +87,7 @@ stmt_list:
 
 stmt:
     expr SEMI                               { Expr $1      }
+  | typ ID assign_opt SEMI                  { VDecl($1, $2, $3) }
   | LBRACE stmt_list RBRACE                 { Block $2 }
   /* if (condition) { block1 } else { block2 } */
   /* if (condition) stmt else stmt */
@@ -96,6 +97,10 @@ stmt:
   | WHILE LPAREN expr RPAREN stmt           { While ($3, $5)  }
   /* return */
   | RETURN expr SEMI                        { Return $2      }
+
+assign_opt:
+  { None }
+  | ASSIGN expr { Some($2) }
 
 ifelifstmt:
     IF LPAREN expr RPAREN stmt              { [($3, $5)] }
