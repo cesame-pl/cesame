@@ -186,3 +186,6 @@ let check (globals, functions) =
     }
   in
   (globals, List.map check_func functions)
+
+
+let check_program (prog : stmt list) = ()

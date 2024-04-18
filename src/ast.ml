@@ -28,6 +28,7 @@ type stmt =
   | While of expr * stmt
   (* return *)
   | Return of expr
+  | VDecl of typ * string * expr option
 
 (* int x: name binding *)
 type bind = typ * string
@@ -49,7 +50,8 @@ type func_def = {
   body: stmt list;
 } *)
 
-type program = bind list * func_def list
+(* Previously, type program = bind list * func_def list*)
+type program = stmt list
 
 (* Pretty-printing functions *)
 let string_of_unaop = function
@@ -134,7 +136,10 @@ let string_of_fdecl fdecl =
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
-let string_of_program (vars, funcs) =
+(* let string_of_program (vars, funcs) =
   "\n\nParsed program: \n\n" ^
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "\n" (List.map string_of_fdecl funcs)
+  String.concat "\n" (List.map string_of_fdecl funcs) *)
+let string_of_program program =
+  String.concat "" (List.map string_of_stmt program)
+  

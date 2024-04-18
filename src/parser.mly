@@ -36,7 +36,7 @@ open Ast
 
 /* add function declarations*/
 program:
-  decls EOF { $1 }
+  stmt_list EOF { $1 }
 
 decls:
   /* nothing */      { ([], [])                 }
