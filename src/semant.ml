@@ -95,10 +95,10 @@ let check (globals, functions) =
           [] -> prev_typ
         | [element] -> (
           if (prev_typ = fst (check_expr element)) then prev_typ
-          else raise (Failure ("Array type " ^ (string_of_typ prev_typ) ^ "inconcistent with type " ^ (string_of_typ (fst (check_expr element)))))
+          else raise (Failure ("Array type " ^ (string_of_typ prev_typ) ^ "inconsistent with type " ^ (string_of_typ (fst (check_expr element)))))
         )
         | hd::tl -> (
-            if (prev_typ = fst (check_expr hd)) then (check_array_helper tl prev_typ)else raise (Failure ("Array type " ^ (string_of_typ prev_typ) ^ "inconcistent with type " ^ (string_of_typ (fst (check_expr hd)))))
+            if (prev_typ = fst (check_expr hd)) then (check_array_helper tl prev_typ)else raise (Failure ("Array type " ^ (string_of_typ prev_typ) ^ "inconsistent with type " ^ (string_of_typ (fst (check_expr hd)))))
         )
       ) in let check_array l = (
         match l with 
