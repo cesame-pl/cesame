@@ -26,6 +26,8 @@ rule token = parse
 | '+'      { PLUS }
 | '-'      { MINUS }
 | '='      { ASSIGN }
+| "++"     { INC }
+| "--"     { DEC }
 | '!'      { NOT }
 | "=="     { EQ }
 | "!="     { NEQ }
@@ -35,8 +37,10 @@ rule token = parse
 | "<="     { LE }
 | "&&"     { AND }
 | "||"     { OR }
+(* IF...ELIF...ELSE *)
 | "if"     { IF }
 | "else"   { ELSE }
+| "elif"   { ELIF }
 | "while"  { WHILE }
 (* RETURN *)
 | "return" { RETURN }
