@@ -7,13 +7,13 @@ open Ast
 %token SEMI LPAREN RPAREN LBRACE RBRACE MUL DIV MOD PLUS MINUS ASSIGN INC DEC LSQBRACE RSQBRACE
 %token CONTINUE BREAK FOR FUNC ARROW
 %token NOT GE LE GT LT EQ NEQ AND OR
-%token IF ELIF ELSE WHILE INT CHAR BOOL ARRAY
-/* return, COMMA token */
+%token IF ELIF ELSE WHILE INT CHAR BOOL FLOAT ARRAY
 %token RETURN COMMA
 %token STRING
 %token <int> LITERAL
 %token <char> CLIT
 %token <bool> BLIT
+%token <float> FLIT
 %token <string> ID
 %token <string> STRLIT
 %token EOF
@@ -23,6 +23,7 @@ open Ast
 
 %nonassoc NOELSE
 %nonassoc ELSE
+%nonassoc INC DEC
 %right ASSIGN
 %right NOT
 %left OR
@@ -35,16 +36,16 @@ open Ast
 
 /* add function declarations*/
 program:
-  decls EOF { $1}
+  decls EOF { $1 }
 
 decls:
-   /* nothing */ { ([], [])               }
- | vdecl SEMI decls { (($1 :: fst $3), snd $3) }
- | fdecl decls { (fst $2, ($1 :: snd $2)) }
+  /* nothing */      { ([], [])                 }
+  | vdecl SEMI decls { (($1 :: fst $3), snd $3) }
+  | fdecl decls      { (fst $2, ($1 :: snd $2)) }
 
 vdecl_list:
-  /*nothing*/ { [] }
-  | vdecl SEMI vdecl_list  {  $1 :: $3 }
+  /* nothing */            { [] }
+  | vdecl SEMI vdecl_list  { $1 :: $3 }
 
 /* int x */
 vdecl:
@@ -54,8 +55,9 @@ typ:
     INT   { Int   }
   | CHAR  { Char  }
   | BOOL  { Bool  }
+  | FLOAT { Float }
   | STRING { String }
-  | ARRAY LT typ GT {Array($3)}
+  | ARRAY LT typ GT { Array($3) }
 
 /* fdecl */
 fdecl:
@@ -72,15 +74,15 @@ fdecl:
 
 /* formals_opt */
 formals_opt:
-  /*nothing*/ { [] }
+  /* nothing */  { [] }
   | formals_list { $1 }
 
 formals_list:
-  vdecl { [$1] }
+    vdecl { [$1] }
   | vdecl COMMA formals_list { $1::$3 }
 
 stmt_list:
-  /* nothing */ { [] }
+  /* nothing */     { [] }
   | stmt stmt_list  { $1::$2 }
 
 stmt:
@@ -89,20 +91,21 @@ stmt:
   /* if (condition) { block1 } else { block2 } */
   /* if (condition) stmt else stmt */
   /* if (condition) stmt (elif stmt)+ NOELSE*/
-  | ifelifstmt ELSE stmt    { If($1, $3) }
-  | ifelifstmt %prec NOELSE { If($1, Expr(Noexpr)) }
+  | ifelifstmt ELSE stmt                    { If($1, $3) }
+  | ifelifstmt %prec NOELSE                 { If($1, Expr(Noexpr)) }
   | WHILE LPAREN expr RPAREN stmt           { While ($3, $5)  }
   /* return */
   | RETURN expr SEMI                        { Return $2      }
 
 ifelifstmt:
- IF LPAREN expr RPAREN stmt { [($3, $5)] }
- | ifelifstmt ELIF LPAREN expr RPAREN stmt {($4, $6)::$1}
+    IF LPAREN expr RPAREN stmt              { [($3, $5)] }
+  | ifelifstmt ELIF LPAREN expr RPAREN stmt { ($4, $6)::$1 }
 
 expr:
     LITERAL          { Literal($1)            }
   | CLIT             { CharLit($1)            }
   | BLIT             { BoolLit($1)            }
+  | FLIT             { FloatLit($1)           }
   | STRLIT           { StrLit($1)             }
   | LSQBRACE elements RSQBRACE { ArrayLit($2) }
   | ID               { Id($1)                 }
@@ -125,18 +128,18 @@ expr:
   | ID DEC           { Assign($1, Binop(Id($1), Sub, Literal(1))) }
   | LPAREN expr RPAREN { $2                   }
   /* call */
-  | ID LPAREN args_opt RPAREN { Call ($1, $3)  }
+  | ID LPAREN args_opt RPAREN { Call ($1, $3) }
 
 /* args_opt*/
 args_opt:
-  /*nothing*/ { [] }
+  /* nothing */ { [] }
   | args { $1 }
 
 elements:
-  /*nothing*/ { [] }
-|  expr { [$1] }
-| expr COMMA elements { $1::$3 }
+  /* nothing */ { [] }
+  | expr { [$1] }
+  | expr COMMA elements { $1::$3 }
 
 args:
-  expr  { [$1] }
+    expr  { [$1] }
   | expr COMMA args { $1::$3 }

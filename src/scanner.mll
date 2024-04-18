@@ -3,9 +3,18 @@
 { open Parser }
 
 let squote = '\''
-let digit = ['0'-'9']
 let letter = ['a'-'z' 'A'-'Z']
 let heading_spaces = ('\r' | '\n' | "\r\n") [' ' '\t']*
+
+let exp = ('e'|'E')
+let sign = ('+'|'-')
+let digit = ['0'-'9']
+let int = sign? digit+
+let float = (
+  int? '.' digit+ (exp int)? |
+  int '.' digit* (exp int)? |
+  int exp int
+)
 
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
@@ -18,17 +27,16 @@ rule token = parse
 | '['      { LSQBRACE }
 | ']'      { RSQBRACE }
 | ';'      { SEMI }
-(* COMMA *)
 | ','      { COMMA }
-| '*'      { MUL }
-| '/'      { DIV }
-| '%'      { MOD }
-| '+'      { PLUS }
-| '-'      { MINUS }
-| '='      { ASSIGN }
+(* Operators *)
 | "++"     { INC }
 | "--"     { DEC }
 | '!'      { NOT }
+| '+'      { PLUS }
+| '-'      { MINUS }
+| '*'      { MUL }
+| '/'      { DIV }
+| '%'      { MOD }
 | "=="     { EQ }
 | "!="     { NEQ }
 | '<'      { LT }
@@ -37,27 +45,32 @@ rule token = parse
 | "<="     { LE }
 | "&&"     { AND }
 | "||"     { OR }
-(* IF...ELIF...ELSE *)
+| '='      { ASSIGN }
+(* Control Flow *)
 | "if"     { IF }
 | "else"   { ELSE }
 | "elif"   { ELIF }
+| "for"    { FOR }
 | "while"  { WHILE }
-(* RETURN *)
+| "continue" { CONTINUE }
+| "break"  { BREAK }
 | "return" { RETURN }
+(* Types *)
 | "int"    { INT }
 | "char"   { CHAR }
 | "bool"   { BOOL }
+| "float"  { FLOAT }
 | "String" { STRING }
 | "Array"  { ARRAY }
+| "Func"   { FUNC }
+| "->"     { ARROW }
+(* ID *)
+| letter (digit | letter | '_')* as lem { ID(lem) }
+(* Literals *)
 | "true"   { BLIT(true)  }
 | "false"  { BLIT(false) }
-| "continue" { CONTINUE }
-| "break" { BREAK }
-| "for" { FOR }
-| "Func" { FUNC }
-| "->" { ARROW }
-| '"'      { let s = "" in strparse s lexbuf }
-| digit+ as lem  { LITERAL(int_of_string lem) }
+| int as lem  { LITERAL(int_of_string lem) }
+| float as lem { FLIT(float_of_string lem) }
 | squote _ squote as lem { CLIT(lem.[1]) }
 | squote '\\' ('n' | 't' | '\\' | '\'') squote as lem { 
   let c = match lem.[2] with
@@ -66,9 +79,10 @@ rule token = parse
           | '\\' -> '\\'
           | '\'' -> '\''
   in CLIT(c)  }
-| letter (digit | letter | '_')* as lem { ID(lem) }
-| eof { EOF }
+| '"'      { let s = "" in strparse s lexbuf }
+
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
+| eof       { EOF }
 
 and gcomment = parse
   "*/" { token lexbuf }
