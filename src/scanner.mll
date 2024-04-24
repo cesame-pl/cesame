@@ -23,18 +23,18 @@ rule token = parse
 | '*'      { MUL }
 | '/'      { DIV }
 | '%'      { MOD }
-| '+'      { PLUS }
-| '-'      { MINUS }
-| '='      { ASSIGN }
 | "++"     { INC }
 | "--"     { DEC }
-| '!'      { NOT }
+| '+'      { PLUS }
+| '-'      { MINUS }
 | "=="     { EQ }
+| '='      { ASSIGN } (* Assign(=) needs to go after EQ(==) *)
 | "!="     { NEQ }
-| '<'      { LT }
-| '>'      { GT }
+| '!'      { NOT } (* Not(!) needs to go after NEQ(!=) *)
 | ">="     { GE }
 | "<="     { LE }
+| '<'      { LT }
+| '>'      { GT }
 | "&&"     { AND }
 | "||"     { OR }
 (* IF...ELIF...ELSE *)
