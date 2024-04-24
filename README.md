@@ -28,7 +28,9 @@ make
     - Implemented Unary Operators: !
     - Implemented Binary Operators: *, /, %, ++, --
 - Array (by Qian)
+- Floating Point (by Yunjia)
 - if-elif-else (by Teng)
+- for loop (by Teng)
 
 ## Work Remaining
 - **Timeline:**
