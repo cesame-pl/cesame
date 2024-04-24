@@ -37,7 +37,6 @@ rule token = parse
 | '/'      { DIV }
 | '%'      { MOD }
 | "=="     { EQ }
-| '='      { ASSIGN } (* Assign(=) needs to go after EQ(==) *)
 | "!="     { NEQ }
 | '!'      { NOT } (* Not(!) needs to go after NEQ(!=) *)
 | ">="     { GE }
@@ -46,6 +45,7 @@ rule token = parse
 | '>'      { GT }
 | "&&"     { AND }
 | "||"     { OR }
+| '='      { ASSIGN } (* Assign(=) needs to go after EQ(==) *)
 (* Control Flow *)
 | "if"     { IF }
 | "else"   { ELSE }
