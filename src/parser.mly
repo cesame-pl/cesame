@@ -47,6 +47,7 @@ vdecl_list:
   | vdecl SEMI vdecl_list  {  $1 :: $3 }
 
 /* int x */
+/* TODO: support int x = 1; */
 vdecl:
   typ ID { ($1, $2) }
 
@@ -83,6 +84,7 @@ stmt_list:
   /* nothing */ { [] }
   | stmt stmt_list  { $1::$2 }
 
+/* TODO: It might be better to seperate out some important clause, like vdecl */
 stmt:
     expr SEMI                               { Expr $1      }
   | LBRACE stmt_list RBRACE                 { Block $2 }
@@ -91,7 +93,14 @@ stmt:
   /* if (condition) stmt (elif stmt)+ NOELSE*/
   | ifelifstmt ELSE stmt    { If($1, $3) }
   | ifelifstmt %prec NOELSE { If($1, Expr(Noexpr)) }
+  /* while statement */
   | WHILE LPAREN expr RPAREN stmt           { While ($3, $5)  }
+  /* for statement */
+  /* TODO: for i in array */
+  | FOR LPAREN opt_loop_init SEMI opt_expr SEMI opt_expr RPAREN LBRACE stmt_list RBRACE
+  {
+    For($3, $5, $7, List.rev $10)
+  }
   /* return */
   | RETURN expr SEMI                        { Return $2      }
 
@@ -140,3 +149,13 @@ elements:
 args:
   expr  { [$1] }
   | expr COMMA args { $1::$3 }
+
+opt_expr:
+  /*nothing*/ { None }
+| expr { Some($1) }
+
+opt_loop_init:
+  /*nothing*/ { None } /* for option */
+| expr { Some(Expr $1) }
+(* TODO: Can typ ID ASSIGN expr be expressed with some variation of vdecl *)
+| typ ID ASSIGN expr {  Some(VDecl($1, $2, Some($4))) }
