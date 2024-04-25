@@ -31,7 +31,6 @@ rule token = parse
 (* Operators *)
 | "++"     { INC }
 | "--"     { DEC }
-| '!'      { NOT }
 | '+'      { PLUS }
 | '-'      { MINUS }
 | '*'      { MUL }
@@ -39,13 +38,14 @@ rule token = parse
 | '%'      { MOD }
 | "=="     { EQ }
 | "!="     { NEQ }
-| '<'      { LT }
-| '>'      { GT }
+| '!'      { NOT } (* Not(!) needs to go after NEQ(!=) *)
 | ">="     { GE }
 | "<="     { LE }
+| '<'      { LT }
+| '>'      { GT }
 | "&&"     { AND }
 | "||"     { OR }
-| '='      { ASSIGN }
+| '='      { ASSIGN } (* Assign(=) needs to go after EQ(==) *)
 (* Control Flow *)
 | "if"     { IF }
 | "else"   { ELSE }

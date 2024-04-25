@@ -20,12 +20,18 @@ type expr =
   (* function call *)
   | Call of string * expr list
 
+(* int x; is a bind or a expr (VDecl), but int x = 1; is a statement. *)
 type stmt =
     Block of stmt list
   | Expr of expr
   (* if ... elif ... else ... *)
   | If of (expr * stmt) list * stmt
+  (* for loop *)
+  | For of (stmt option) * (expr option) * (expr option) * (stmt list) (* break is left for semantic checker? *)
+  (* while: TODO: make expr optional *)
   | While of expr * stmt
+  (* int a; or int a = 1 + 2; the expression is optional *)
+  | VDecl of typ * string * expr option
   (* return *)
   | Return of expr
 
@@ -100,6 +106,14 @@ let rec string_of_stmt_option = function
   | None -> "None" (* Or empty *)
   | Some stmt ->  string_of_stmt stmt *)
 
+let rec string_of_typ = function
+  Int -> "int"
+| Char -> "char"
+| Bool -> "bool"
+| String -> "String"
+| Array(t) -> "Array<" ^ string_of_typ t ^ ">"
+| Void -> ""
+
 let rec string_of_stmt = function
     Block(stmts) ->
     "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
@@ -113,16 +127,28 @@ let rec string_of_stmt = function
     "if (" ^ string_of_expr e ^ ")\n" ^ (string_of_stmt s)
     in String.concat (" " ^ "el") (List.map string_of_if e_s_l) ^
     (" ") ^ "else\n" ^ (string_of_stmt s)
+  | For(stmt_init, e_cond, e_trans, stmt_l) ->
+    "for (" ^ string_of_opt_stmt stmt_init ^ "; " ^ string_of_opt_expr e_cond ^ "; " ^
+    string_of_opt_expr e_trans ^ ") {\n" ^ string_of_stmt_list stmt_l ^ "}\n"
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
+  | VDecl (t, id, opt_expr) ->  (string_of_typ t) ^ " " ^ id ^ (match opt_expr with
+    None -> "" | Some(opt) -> " = " ^ string_of_expr opt)
 
-let rec string_of_typ = function
-    Int -> "int"
-  | Char -> "char"
-  | Bool -> "bool"
-  | Float -> "float"
-  | String -> "String"
-  | Array(t) -> "Array<" ^ string_of_typ t ^ ">"
-  | Void -> ""
+and string_of_stmt_list l =
+  let stmts = List.map string_of_stmt l in
+  String.concat "\n" stmts
+
+and string_of_opt_stmt_list = function
+  None -> ""
+  | Some(l) -> string_of_stmt_list l
+
+and string_of_opt_expr = function (* for an optional expr *)
+  None -> ""
+  | Some(e) -> string_of_expr e
+
+and string_of_opt_stmt = function (* for an optional statement *)
+  None -> ";"
+  | Some(s) -> string_of_stmt s
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 
