@@ -123,9 +123,9 @@ let rec string_of_typ = function
 (* Here, string_of_stmt, string_of_stmt_list, ..., string_of_fdef are all mutually recursive *)
 let rec string_of_stmt = function
     Block(stmts) ->
-    "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
-  | Expr(expr) -> string_of_expr expr ^ ";\n"
-  | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n"
+    "\n" ^ string_of_stmt_list stmts ^ "}"
+  | Expr(expr) -> string_of_expr expr ^ ";"
+  | Return(expr) -> "return " ^ string_of_expr expr ^ "; "
   | If(e_s_l,Expr(Noexpr)) -> let string_of_if ((e, s)) =
     "if (" ^ string_of_expr e ^ ")\n" ^ (string_of_stmt s)
     in String.concat ("el") (List.map string_of_if e_s_l)
@@ -135,16 +135,16 @@ let rec string_of_stmt = function
     in String.concat (" " ^ "el") (List.map string_of_if e_s_l) ^
     (" ") ^ "else\n" ^ (string_of_stmt s)
   | For(stmt_init, e_cond, e_trans, stmt_l) ->
-    "for (" ^ string_of_opt_stmt stmt_init ^ string_of_opt_expr e_cond ^ ";\n" ^
-    string_of_opt_expr e_trans ^ ") {\n" ^ string_of_stmt_list stmt_l ^ "}\n"
+    "for (" ^ string_of_opt_stmt stmt_init ^ string_of_opt_expr e_cond ^ "; " ^
+    string_of_opt_expr e_trans ^ ") {\n" ^ string_of_stmt_list stmt_l ^ "\n}"
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
   | VDecl (t, id, opt_expr) ->  (string_of_typ t) ^ " " ^ id ^ (match opt_expr with
-    None -> ";\n" | Some(opt) -> " = " ^ string_of_expr opt ^ ";\n")
+    None -> "; " | Some(opt) -> " = " ^ string_of_expr opt ^ "; ")
   | FDef(f) -> string_of_fdef f
 
 and string_of_stmt_list l =
   let stmts = List.map string_of_stmt l in
-  String.concat "" stmts
+  String.concat "\n" stmts
 
 and string_of_opt_stmt_list = function
   None -> ""
@@ -161,9 +161,9 @@ and string_of_opt_stmt = function (* for an optional statement *)
 and string_of_fdef fdef =
   string_of_typ fdef.rtyp ^ " " ^
   fdef.fname ^ "(" ^ String.concat ", " (List.map snd fdef.params) ^
-  ")\n{\n" ^
-  String.concat "" (List.map string_of_stmt fdef.body) ^
-  "}\n"
+  ")\n{\n" ^ 
+   (string_of_stmt_list fdef.body) ^
+  "\n}\n"
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 
