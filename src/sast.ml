@@ -19,12 +19,13 @@ type sstmt =
     SBlock of sstmt list
   | SExpr of sexpr
   (* | SIf of sexpr * sstmt * sstmt *)
+  | SFor of (sstmt option) * (sexpr option) * (sexpr option) * (sstmt)
   | SWhile of sexpr * sstmt
   (* return *)
   | SReturn of sexpr
-
+  | SFdef of sfunc_def
 (* func_def: ret_typ fname formals locals body *)
-type sfunc_def = {
+and sfunc_def = {
   srtyp: typ;
   sfname: string;
   sparams: bind list;
@@ -32,7 +33,7 @@ type sfunc_def = {
   sbody: sstmt list;
 }
 
-type sprogram = bind list * sfunc_def list (* TODO: sprogram is not in correspondence right now *)
+type sprogram = sstmt list (* TODO: sprogram is not in correspondence right now *)
 
 
 
@@ -58,16 +59,24 @@ let rec string_of_sexpr (t, e) =
           f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
     ) ^ ")"
 
-let rec string_of_sstmt = function
+
+let rec string_of_sstmt = (function
     SBlock(stmts) ->
     "{\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "}\n"
   | SExpr(expr) -> string_of_sexpr expr ^ ";\n"
   | SReturn(expr) -> "return " ^ string_of_sexpr expr ^ ";\n"
   (* | SIf(e, s1, s2) ->  "if (" ^ string_of_sexpr e ^ ")\n" ^
                        string_of_sstmt s1 ^ "else\n" ^ string_of_sstmt s2 *)
-  | SWhile(e, s) -> "while (" ^ string_of_sexpr e ^ ") " ^ string_of_sstmt s
-
-let string_of_sfdecl fdecl =
+  | SFor(s, e1, e2, l) -> "for (" ^ string_of_sstmt_opt s ^ "; " ^ string_of_sexpr_opt e1 ^ "; " ^ string_of_sexpr_opt e2 ^ ")" ^ string_of_sstmt l
+  | SFdef(f) -> string_of_sfdecl f
+  | SWhile(e, s) -> "while (" ^ string_of_sexpr e ^ ") " ^ string_of_sstmt s)
+and string_of_sstmt_opt = function
+  Some sstmt -> string_of_sstmt sstmt
+| None -> ""
+and string_of_sexpr_opt = function
+  Some sexpr -> string_of_sexpr sexpr
+| None -> ""
+and string_of_sfdecl fdecl =
   string_of_typ fdecl.srtyp ^ " " ^
   fdecl.sfname ^ "(" ^ String.concat ", " (List.map snd fdecl.sparams) ^
   ")\n{\n" ^
