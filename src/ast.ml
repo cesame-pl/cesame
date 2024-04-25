@@ -11,7 +11,7 @@ type expr =
   | CharLit of char
   | BoolLit of bool
   | FloatLit of float
-  | Id of string
+  | Id of string (* These are constructors; We can use Id(some_string) to construction a expr *)
   | StrLit of string
   | ArrayLit of expr list
   | Unaop of unaop * expr
@@ -19,6 +19,9 @@ type expr =
   | Assign of string * expr
   (* function call *)
   | Call of string * expr list
+
+(* int x: name binding *)
+type bind = typ * string
 
 (* int x; is a bind or a expr (VDecl), but int x = 1; is a statement. *)
 type stmt =
@@ -33,12 +36,20 @@ type stmt =
   (* int a; or int a = 1 + 2; the expression is optional *)
   | VDecl of typ * string * expr option
   (* return *)
+  (* TODO: support return; *)
   | Return of expr
-
-(* int x: name binding *)
-type bind = typ * string
+  | FDef of func_def (* Not first class function *)
 
 (* func_def: ret_typ fname formals locals body *)
+(* Mutually recursive data types with stmt: https://v2.ocaml.org/learn/tutorials/data_types_and_matching.html *)
+and func_def = {
+  rtyp: typ;
+  fname: string;
+  params: bind list;
+  body: stmt list;
+}
+
+(* 
 type func_def = {
   rtyp: typ;
   fname: string;
@@ -47,15 +58,10 @@ type func_def = {
   body: stmt list;
 }
 
-(* type first_class_func_def = {
-  rtyp: typ;
-  fname: string;
-  formals: bind list;
-  locals: bind list;
-  body: stmt list;
 } *)
 
-type program = bind list * func_def list
+(* type program = bind list * func_def list *)
+type program = stmt list
 
 (* Pretty-printing functions *)
 let string_of_unaop = function
@@ -114,6 +120,7 @@ let rec string_of_typ = function
 | Array(t) -> "Array<" ^ string_of_typ t ^ ">"
 | Void -> ""
 
+(* Here, string_of_stmt, string_of_stmt_list, ..., string_of_fdef are all mutually recursive *)
 let rec string_of_stmt = function
     Block(stmts) ->
     "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
@@ -128,15 +135,16 @@ let rec string_of_stmt = function
     in String.concat (" " ^ "el") (List.map string_of_if e_s_l) ^
     (" ") ^ "else\n" ^ (string_of_stmt s)
   | For(stmt_init, e_cond, e_trans, stmt_l) ->
-    "for (" ^ string_of_opt_stmt stmt_init ^ "; " ^ string_of_opt_expr e_cond ^ "; " ^
+    "for (" ^ string_of_opt_stmt stmt_init ^ string_of_opt_expr e_cond ^ ";\n" ^
     string_of_opt_expr e_trans ^ ") {\n" ^ string_of_stmt_list stmt_l ^ "}\n"
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
   | VDecl (t, id, opt_expr) ->  (string_of_typ t) ^ " " ^ id ^ (match opt_expr with
-    None -> "" | Some(opt) -> " = " ^ string_of_expr opt)
+    None -> ";\n" | Some(opt) -> " = " ^ string_of_expr opt ^ ";\n")
+  | FDef(f) -> string_of_fdef f
 
 and string_of_stmt_list l =
   let stmts = List.map string_of_stmt l in
-  String.concat "\n" stmts
+  String.concat "" stmts
 
 and string_of_opt_stmt_list = function
   None -> ""
@@ -150,17 +158,15 @@ and string_of_opt_stmt = function (* for an optional statement *)
   None -> ";"
   | Some(s) -> string_of_stmt s
 
-let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
-
-let string_of_fdecl fdecl =
-  string_of_typ fdecl.rtyp ^ " " ^
-  fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
+and string_of_fdef fdef =
+  string_of_typ fdef.rtyp ^ " " ^
+  fdef.fname ^ "(" ^ String.concat ", " (List.map snd fdef.params) ^
   ")\n{\n" ^
-  String.concat "" (List.map string_of_vdecl fdecl.locals) ^
-  String.concat "" (List.map string_of_stmt fdecl.body) ^
+  String.concat "" (List.map string_of_stmt fdef.body) ^
   "}\n"
 
-let string_of_program (vars, funcs) =
+let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
+
+let string_of_program (stmts_l) =
   "\n\nParsed program: \n\n" ^
-  String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "\n" (List.map string_of_fdecl funcs)
+  string_of_stmt_list stmts_l

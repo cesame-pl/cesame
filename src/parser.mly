@@ -36,12 +36,12 @@ open Ast
 
 /* add function declarations*/
 program:
-  decls EOF { $1 }
+  stmt_list EOF { $1 }
 
-decls:
-  /* nothing */      { ([], [])                 }
-  | vdecl SEMI decls { (($1 :: fst $3), snd $3) }
-  | fdecl decls      { (fst $2, ($1 :: snd $2)) }
+// decls:
+//   /* nothing */      { ([], [])                 }
+//   | vdecl SEMI decls { (($1 :: fst $3), snd $3) }
+//   | fdecl decls      { (fst $2, ($1 :: snd $2)) }
 
 vdecl_list:
   /* nothing */            { [] }
@@ -50,7 +50,7 @@ vdecl_list:
 /* int x */
 /* TODO: support int x = 1; */
 vdecl:
-  typ ID { ($1, $2) }
+  typ ID { ($1, $2) } (* of type "bind", for function definition and vdecl outside of function *)
 
 typ:
     INT   { Int   }
@@ -60,27 +60,26 @@ typ:
   | STRING { String }
   | ARRAY LT typ GT { Array($3) }
 
-/* fdecl */
-fdecl:
-  vdecl LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
+/* fdef */
+fdef:
+  vdecl LPAREN params_opt RPAREN LBRACE stmt_list RBRACE
   {
-    {
+    FDef({
       rtyp=fst $1;
       fname=snd $1;
-      formals=$3;
-      locals=$6;
-      body=$7
-    }
+      params=$3;
+      body=$6
+    })
   }
 
-/* formals_opt */
-formals_opt:
+/* params_opt */
+params_opt:
   /* nothing */  { [] }
-  | formals_list { $1 }
+  | params_list { $1 }
 
-formals_list:
+params_list:
     vdecl { [$1] }
-  | vdecl COMMA formals_list { $1::$3 }
+  | vdecl COMMA params_list { $1::$3 }
 
 stmt_list:
   /* nothing */     { [] }
@@ -90,6 +89,8 @@ stmt_list:
 stmt:
     expr SEMI                               { Expr $1      }
   | LBRACE stmt_list RBRACE                 { Block $2 }
+  | typ ID ASSIGN expr SEMI                 { VDecl($1, $2, Some($4)) }
+  | typ ID SEMI                             { VDecl($1, $2, None) }
   /* if (condition) { block1 } else { block2 } */
   /* if (condition) stmt else stmt */
   /* if (condition) stmt (elif stmt)+ NOELSE*/
@@ -100,10 +101,13 @@ stmt:
   /* TODO: for i in array */
   | FOR LPAREN opt_loop_init SEMI opt_expr SEMI opt_expr RPAREN LBRACE stmt_list RBRACE
   {
-    For($3, $5, $7, List.rev $10)
+    For($3, $5, $7, $10)
   }
   /* return */
   | RETURN expr SEMI                        { Return $2      }
+  /* non-first class function definition*/
+  | fdef                                    { $1             }
+
 
 ifelifstmt:
     IF LPAREN expr RPAREN stmt              { [($3, $5)] }

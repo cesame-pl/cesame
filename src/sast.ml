@@ -27,12 +27,12 @@ type sstmt =
 type sfunc_def = {
   srtyp: typ;
   sfname: string;
-  sformals: bind list;
-  slocals: bind list;
+  sparams: bind list;
+  (* slocals: bind list; *)
   sbody: sstmt list;
 }
 
-type sprogram = bind list * sfunc_def list
+type sprogram = bind list * sfunc_def list (* TODO: sprogram is not in correspondence right now *)
 
 
 
@@ -69,9 +69,9 @@ let rec string_of_sstmt = function
 
 let string_of_sfdecl fdecl =
   string_of_typ fdecl.srtyp ^ " " ^
-  fdecl.sfname ^ "(" ^ String.concat ", " (List.map snd fdecl.sformals) ^
+  fdecl.sfname ^ "(" ^ String.concat ", " (List.map snd fdecl.sparams) ^
   ")\n{\n" ^
-  String.concat "" (List.map string_of_vdecl fdecl.slocals) ^
+  (* String.concat "" (List.map string_of_vdecl fdecl.slocals) ^ *)
   String.concat "" (List.map string_of_sstmt fdecl.sbody) ^
   "}\n"
 
