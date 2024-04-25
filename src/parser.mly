@@ -7,7 +7,7 @@ open Ast
 %token SEMI LPAREN RPAREN LBRACE RBRACE MUL DIV MOD PLUS MINUS ASSIGN INC DEC LSQBRACE RSQBRACE
 %token CONTINUE BREAK FOR FUNC ARROW
 %token NOT GE LE GT LT EQ NEQ AND OR
-%token IF ELIF ELSE WHILE INT CHAR BOOL FLOAT ARRAY
+%token IF ELIF ELSE WHILE INT CHAR BOOL FLOAT STRUCT ARRAY
 %token RETURN COMMA
 %token STRING
 %token <int> LITERAL
@@ -15,6 +15,7 @@ open Ast
 %token <bool> BLIT
 %token <float> FLIT
 %token <string> ID
+%token <string> STRUCTID
 %token <string> STRLIT
 %token EOF
 
@@ -91,6 +92,7 @@ stmt:
   | LBRACE stmt_list RBRACE                 { Block $2 }
   | typ ID ASSIGN expr SEMI                 { VDecl($1, $2, Some($4)) }
   | typ ID SEMI                             { VDecl($1, $2, None) }
+  | STRUCT STRUCTID LBRACE vdecl_list RBRACE SEMI { SDef($2, $4)   }
   /* if (condition) { block1 } else { block2 } */
   /* if (condition) stmt else stmt */
   /* if (condition) stmt (elif stmt)+ NOELSE*/

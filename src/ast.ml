@@ -35,6 +35,7 @@ type stmt =
   | While of expr * stmt
   (* int a; or int a = 1 + 2; the expression is optional *)
   | VDecl of typ * string * expr option
+  | SDef of string * (typ * string) list 
   (* return *)
   (* TODO: support return; *)
   | Return of expr
@@ -57,8 +58,7 @@ type func_def = {
   locals: bind list;
   body: stmt list;
 }
-
-} *)
+*)
 
 (* type program = bind list * func_def list *)
 type program = stmt list
@@ -120,6 +120,11 @@ let rec string_of_typ = function
 | Array(t) -> "Array<" ^ string_of_typ t ^ ">"
 | Void -> ""
 
+let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
+let string_of_vdecl_list l = 
+  let vdecls = List.map string_of_vdecl l in
+  String.concat "" vdecls
+
 (* Here, string_of_stmt, string_of_stmt_list, ..., string_of_fdef are all mutually recursive *)
 let rec string_of_stmt = function
     Block(stmts) ->
@@ -140,7 +145,9 @@ let rec string_of_stmt = function
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
   | VDecl (t, id, opt_expr) ->  (string_of_typ t) ^ " " ^ id ^ (match opt_expr with
     None -> "; " | Some(opt) -> " = " ^ string_of_expr opt ^ "; ")
+  | SDef(s, l) -> "struct " ^ s ^ " {\n" ^ string_of_vdecl_list l  ^ "}\n"
   | FDef(f) -> string_of_fdef f
+
 
 and string_of_stmt_list l =
   let stmts = List.map string_of_stmt l in
@@ -163,9 +170,7 @@ and string_of_fdef fdef =
   fdef.fname ^ "(" ^ String.concat ", " (List.map snd fdef.params) ^
   ")\n{\n" ^ 
    (string_of_stmt_list fdef.body) ^
-  "\n}\n"
-
-let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
+  "\n}\n" 
 
 let string_of_program (stmts_l) =
   "\n\nParsed program: \n\n" ^
