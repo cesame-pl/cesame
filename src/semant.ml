@@ -112,14 +112,16 @@ let check_bool_expr e bind_list function_list =
       match t with
       | Bool -> (t, e')
       |  _ -> raise (Failure ("expected Boolean expression in " ^ string_of_expr e)) in
+(*check the declarations, pass the local declaration and local functions, return the new declaration list, the original function list and the checked sast*)
 let check_vdecl bind_list func_decl_list vdecl = 
   let symbols = make_symbol_map(bind_list) in
+  (*Make a map according to the locals list and find variable name in it. If not found, then it is fine, or its a depilcated declaration and need to throw an errot*)
   match vdecl with
     (t, s, None) -> (match StringMap.find_opt s symbols with 
-                      None -> ((t,s)::bind_list, func_decl_list, SVDecl(t, s, None))
+                      None -> ((t,s)::bind_list, SVDecl(t, s, None))
                       | _ -> raise(Failure("Duplicated definition of "^s^"!\n")))
     |(t, s, Some e) -> (match StringMap.find_opt s symbols with 
-                  None -> let (rt, ex) = check_expr e bind_list func_decl_list in (if t = rt then ((t,s)::bind_list, func_decl_list, SVDecl(t, s, Some (rt,ex))) else raise(Failure(string_of_typ t ^ " does not match " ^ string_of_typ rt)))
+                  None -> let (rt, ex) = check_expr e bind_list func_decl_list in (if t = rt then ((t,s)::bind_list, SVDecl(t, s, Some (rt,ex))) else raise(Failure(string_of_typ t ^ " does not match " ^ string_of_typ rt)))
 
                   | _ -> raise(Failure("Duplicated definition of "^s^"!\n"))) in 
   
@@ -136,7 +138,8 @@ Block sl -> (locals, local_func_decls, SBlock (check_stmt_list globals locals gl
 | Expr e -> (locals, local_func_decls, SExpr ((check_expr e (globals @ locals) (global_func_decls @ local_func_decls))))
 (* | If(e, st1, st2) ->
 SIf(check_bool_expr e, check_stmt st1, check_stmt st2) *)
-| VDecl(t, s, eop) -> check_vdecl locals (global_func_decls @ local_func_decls) (t, s, eop)
+
+| VDecl(t, s, eop) -> let (new_locals, svdec) = check_vdecl locals (global_func_decls @ local_func_decls) (t, s, eop) in (new_locals, local_func_decls, svdec)
 | While(e, st) ->
 (locals, local_func_decls, let (_, _, sstmts) = check_stmt (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp st in SWhile(check_bool_expr e (globals @ locals) (global_func_decls @ local_func_decls), sstmts))
 | Return e ->
@@ -146,6 +149,7 @@ else raise (
     Failure ("return gives " ^ string_of_typ t ^ " expected " ^
              string_of_typ rtyp ^ " in " ^ string_of_expr e))
 | FDef(f) -> let check_func globals locals global_func_decls local_func_decls f =
+  (*Check whether there is deplicated params*)
   let check_param bind_list p = let p_map = make_symbol_map bind_list in match StringMap.find_opt (snd p) p_map with
     None -> p::bind_list
     | Some n -> raise(Failure("Duplicated bind of " ^ (snd p) ^ " in function " ^ f.fname )) in 
@@ -153,7 +157,10 @@ else raise (
      [] -> []
     | p::pl -> (let new_bind_list = check_param bind_list p in p::check_params new_bind_list pl))
   in let sbinds = check_params [] f.params 
+  (*Check whether there is dupilcated function name*)
 in let check_fname name = let f_map = make_func_map (global_func_decls @ local_func_decls) in match StringMap.find_opt name f_map with 
   Some f -> raise(Failure("Do not support duplicated function name " ^ name))
-  | None -> name in let sname = check_fname f.fname in let sstmts = check_stmt_list (globals @ locals) sbinds (global_func_decls @ local_func_decls) [f] f.rtyp f.body in (locals, f::local_func_decls, SFdef({srtyp = f.rtyp; sfname = sname; sparams = f.params; sbody = sstmts})) in check_func globals locals global_func_decls local_func_decls f
+  | None -> name in let sname = check_fname f.fname in 
+  (*Check the statements, with the globals being a joint list of current locals and globals, with the same for functions. Local variables are parameters, local function is only itself and the return type is the return type of the funtion*)
+  let sstmts = check_stmt_list (globals @ locals) sbinds (global_func_decls @ local_func_decls) [f] f.rtyp f.body in (locals, f::local_func_decls, SFdef({srtyp = f.rtyp; sfname = sname; sparams = f.params; sbody = sstmts})) in check_func globals locals global_func_decls local_func_decls f
 in check_stmt_list [] [] [] [] Int stmts
