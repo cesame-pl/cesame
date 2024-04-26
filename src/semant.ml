@@ -113,8 +113,7 @@ let check_bool_expr e bind_list function_list =
       | Bool -> (t, e')
       |  _ -> raise (Failure ("expected Boolean expression in " ^ string_of_expr e)) in
 let check_vdecl bind_list func_decl_list vdecl = 
-  let symbols = make_symbol_map(bind_list) in 
-  let func_map = make_func_map(func_decl_list) in
+  let symbols = make_symbol_map(bind_list) in
   match vdecl with
     (t, s, None) -> (match StringMap.find_opt s symbols with 
                       None -> ((t,s)::bind_list, func_decl_list, SVDecl(t, s, None))
@@ -123,33 +122,38 @@ let check_vdecl bind_list func_decl_list vdecl =
                   None -> let (rt, ex) = check_expr e bind_list func_decl_list in (if t = rt then ((t,s)::bind_list, func_decl_list, SVDecl(t, s, Some (rt,ex))) else raise(Failure(string_of_typ t ^ " does not match " ^ string_of_typ rt)))
 
                   | _ -> raise(Failure("Duplicated definition of "^s^"!\n"))) in 
-let rec check_stmt_list binds func_decls s = 
+  
+let rec check_stmt_list globals locals global_func_decls local_func_decls rtyp s = 
 match s with
 [] -> []
-| Block sl :: sl'  -> check_stmt_list binds func_decls (sl @ sl')(* Flatten blocks *)
-| s :: sl -> let (new_binds, new_func_decls, s_stmt) = check_stmt binds func_decls s in s_stmt :: check_stmt_list new_binds new_func_decls sl
+| Block sl :: sl'  -> check_stmt_list globals locals global_func_decls local_func_decls rtyp (sl @ sl')(* Flatten blocks *)
+| s :: sl -> let (new_locals, new_local_func_decls, s_stmt) = check_stmt globals locals global_func_decls local_func_decls rtyp s in s_stmt :: check_stmt_list globals new_locals global_func_decls new_local_func_decls rtyp sl
 (* Return a semantically-checked statement i.e. containing sexprs *)
-and check_stmt binds func_decls =function
+and check_stmt globals locals global_func_decls local_func_decls rtyp =function
 (* A block is correct if each statement is correct and nothing
  follows any Return statement.  Nested blocks are flattened. *)
-Block sl -> (binds, func_decls, SBlock (check_stmt_list binds func_decls sl))
-| Expr e -> (binds, func_decls, SExpr ((check_expr e binds func_decls)))
+Block sl -> (locals, local_func_decls, SBlock (check_stmt_list globals locals global_func_decls local_func_decls rtyp sl))
+| Expr e -> (locals, local_func_decls, SExpr ((check_expr e (globals @ locals) (global_func_decls @ local_func_decls))))
 (* | If(e, st1, st2) ->
 SIf(check_bool_expr e, check_stmt st1, check_stmt st2) *)
-| VDecl(t, s, eop) -> check_vdecl binds func_decls (t, s, eop)
+| VDecl(t, s, eop) -> check_vdecl locals (global_func_decls @ local_func_decls) (t, s, eop)
 | While(e, st) ->
-(binds, func_decls, let (_, _, sstmts) = check_stmt binds func_decls st in SWhile(check_bool_expr e binds func_decls, sstmts))
-(*| Return e ->
-let (t, e') = check_expr e binds func_decls in
-if t = func.rtyp then (binds, func_decls, SReturn (t, e'))
+(locals, local_func_decls, let (_, _, sstmts) = check_stmt (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp st in SWhile(check_bool_expr e (globals @ locals) (global_func_decls @ local_func_decls), sstmts))
+| Return e ->
+let (t, e') = check_expr e (globals @ locals) (global_func_decls @ local_func_decls) in
+if t = rtyp then (locals, local_func_decls, SReturn (t, e'))
 else raise (
     Failure ("return gives " ^ string_of_typ t ^ " expected " ^
-             string_of_typ func.rtyp ^ " in " ^ string_of_expr e))
-in (* body of check_func *)
-{ srtyp = func.rtyp;
-sfname = func.fname;
-sparams = func.params;
-(* TODO: local variable *)
-sbody = check_stmt_list func.body bind_list func_decls
-}*)
-in check_stmt_list [] [] stmts
+             string_of_typ rtyp ^ " in " ^ string_of_expr e))
+| FDef(f) -> let check_func globals locals global_func_decls local_func_decls f =
+  let check_param bind_list p = let p_map = make_symbol_map bind_list in match StringMap.find_opt (snd p) p_map with
+    None -> p::bind_list
+    | Some n -> raise(Failure("Duplicated bind of " ^ (snd p) ^ " in function " ^ f.fname )) in 
+  let rec check_params bind_list pl = (match pl with
+     [] -> []
+    | p::pl -> (let new_bind_list = check_param bind_list p in p::check_params new_bind_list pl))
+  in let sbinds = check_params [] f.params 
+in let check_fname name = let f_map = make_func_map (global_func_decls @ local_func_decls) in match StringMap.find_opt name f_map with 
+  Some f -> raise(Failure("Do not support duplicated function name " ^ name))
+  | None -> name in let sname = check_fname f.fname in let sstmts = check_stmt_list (globals @ locals) sbinds (global_func_decls @ local_func_decls) [f] f.rtyp f.body in (locals, f::local_func_decls, SFdef({srtyp = f.rtyp; sfname = sname; sparams = f.params; sbody = sstmts})) in check_func globals locals global_func_decls local_func_decls f
+in check_stmt_list [] [] [] [] Int stmts
