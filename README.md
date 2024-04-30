@@ -44,6 +44,8 @@ make
     - Statements
         - for Statements
 
+## Struct
+Struct names can only start with Capitalized letters.
 
 ## Functionalities
 

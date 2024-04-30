@@ -2,3 +2,9 @@ struct Student {
     String name;
     int age;
 };
+
+Student a;
+Student a = new Student;
+
+Array<int> b;
+b = new Array<int>;

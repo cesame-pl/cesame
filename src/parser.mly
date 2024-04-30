@@ -10,11 +10,14 @@ open Ast
 %token IF ELIF ELSE WHILE INT CHAR BOOL FLOAT STRUCT ARRAY
 %token RETURN COMMA
 %token STRING
+%token NEW DELETE
+%token DOT
 %token <int> LITERAL
 %token <char> CLIT
 %token <bool> BLIT
 %token <float> FLIT
 %token <string> ID
+%token <string> STRUCTID
 %token <string> STRLIT
 %token EOF
 
@@ -58,7 +61,8 @@ typ:
   | BOOL  { Bool  }
   | FLOAT { Float }
   | STRING { String }
-  | ARRAY LT typ GT { Array($3) }
+  | STRUCTID { Struct $1 }
+  | ARRAY LT typ GT { Array $3 }
 
 /* fdef */
 fdef:
@@ -91,7 +95,7 @@ stmt:
   | LBRACE stmt_list RBRACE                 { Block $2 }
   | typ ID ASSIGN expr SEMI                 { VDecl($1, $2, Some($4)) }
   | typ ID SEMI                             { VDecl($1, $2, None) }
-  | STRUCT ID LBRACE vdecl_list RBRACE SEMI { SDef($2, $4)   }
+  | STRUCT STRUCTID LBRACE vdecl_list RBRACE SEMI { SDef($2, $4) }
   /* if (condition) { block1 } else { block2 } */
   /* if (condition) stmt else stmt */
   /* if (condition) stmt (elif stmt)+ NOELSE*/
@@ -108,6 +112,8 @@ stmt:
   | RETURN expr SEMI                        { Return $2      }
   /* non-first class function definition*/
   | fdef                                    { $1             }
+  /* delete */
+  | DELETE ID                               { Delete $2      }
 
 
 ifelifstmt:
@@ -136,12 +142,20 @@ expr:
   | expr NEQ    expr { Binop($1, Neq, $3)     }
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
+  (* Question: Why can these ID clauses be put after "| ID { Id($1) }" *)
   | ID ASSIGN expr   { Assign($1, $3)         }
   | ID INC           { Assign($1, Binop(Id($1), Add, Literal(1))) }
   | ID DEC           { Assign($1, Binop(Id($1), Sub, Literal(1))) }
   | LPAREN expr RPAREN { $2                   }
-  /* call */
+  /* function call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3) }
+  /* new object, like "new Student {1, 2}", or simply "new Student", although it's a expr, it should not be used alone (without being assigned to some variable) */
+  | NEW STRUCTID     { New(NewStruct $2)      }
+  /* new Array<int> */
+  | NEW ARRAY LT typ GT { New(NewArray $4)    }
+  | ID DOT ID        { AccessMember($1, $3)   }
+
+
 
 /* args_opt*/
 args_opt:
