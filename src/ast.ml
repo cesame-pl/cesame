@@ -118,6 +118,7 @@ let rec string_of_typ = function
 | Bool -> "bool"
 | String -> "String"
 | Array(t) -> "Array<" ^ string_of_typ t ^ ">"
+| Float -> "float"
 | Void -> ""
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
