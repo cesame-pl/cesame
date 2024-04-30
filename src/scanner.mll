@@ -3,8 +3,7 @@
 { open Parser }
 
 let squote = '\''
-let lletter = ['a'-'z']
-let uletter = ['A'-'Z']
+let letter = ['a'-'z' 'A'-'Z']
 let heading_spaces = ('\r' | '\n' | "\r\n") [' ' '\t']*
 
 let exp = ('e'|'E')
@@ -67,8 +66,7 @@ rule token = parse
 | "Func"   { FUNC }
 | "->"     { ARROW }
 (* ID *)
-| uletter (digit | lletter | uletter | '_')* as lem { STRUCTID(lem) }
-| lletter (digit | lletter | uletter | '_')* as lem { ID(lem) }
+| letter (digit | letter | '_')* as lem { ID(lem) }
 (* Literals *)
 | "true"   { BLIT(true)  }
 | "false"  { BLIT(false) }
