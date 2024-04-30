@@ -151,8 +151,7 @@ expr:
   | ID LPAREN args_opt RPAREN { Call ($1, $3) }
   /* new object, like "new Student {1, 2}", or simply "new Student", although it's a expr, it should not be used alone (without being assigned to some variable) */
   | NEW STRUCTID     { New(NewStruct $2)      }
-  /* new Array<int> */
-  | NEW ARRAY LT typ GT { New(NewArray $4)    }
+  /* Access struct members */
   | ID DOT ID        { AccessMember($1, $3)   }
 
 

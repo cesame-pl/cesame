@@ -5,6 +5,3 @@ struct Student {
 
 Student a;
 Student a = new Student;
-
-Array<int> b;
-b = new Array<int>;

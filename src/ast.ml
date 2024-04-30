@@ -19,15 +19,14 @@ type expr =
   | Assign of string * expr
   (* function call, myFunc(5, 3); *)
   | Call of string * expr list
-  | New of newable (* New(NewFunc(...)), or New(NewStruct(...)) *)
+  | New of newable (* New(NewStruct(...)) *)
   (* access member of a struct *)
   | AccessMember of string * string (* *"a.name" *)
 
 (* "new Student" is an expression, "new Student {xxx} not yet supported " *)
 and newable =
   NewStruct of string (* new struct object, "new Student {name = "abc", age = 10}" not yet supported, we're thinking whether to use expr list option or a new type to define the body *)
-  | NewArray of typ (* new array object "new Array<int>" *)
-
+  (* | NewFunc TODO *)
 (* For new struct object, Student a = new Student {name = "abc", age = 10}, not yet supported *)
 
 
@@ -119,7 +118,6 @@ let rec string_of_expr = function
   | Noexpr -> ""
 
 and string_of_newable = function
-  | NewArray(t) -> "new " ^ (string_of_typ t)
   | NewStruct(s) -> "new " ^ s
 
 (* let rec string_of_expr_option = function
