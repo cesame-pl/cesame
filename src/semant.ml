@@ -30,8 +30,8 @@ let check (globals, functions) =
     StringMap.add "print" {
       rtyp = Int;
       fname = "print";
-      formals = [(Int, "x")];
-      locals = []; body = [] } StringMap.empty
+      params = [(Int, "x")];
+      (* TODO: locals *) body = [] } StringMap.empty
   in
 
   (* Add function name to symbol table *)
@@ -59,9 +59,9 @@ let check (globals, functions) =
   let _ = find_func "main" in (* Ensure "main" is defined *)
 
   let check_func func =
-    (* Make sure no formals or locals are void or duplicates *)
-    check_binds "formal" func.formals;
-    check_binds "local" func.locals;
+    (* Make sure no params or locals are void or duplicates *)
+    check_binds "param" func.params;
+    (* TODO: Check for local variables *)
 
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
@@ -76,7 +76,7 @@ let check (globals, functions) =
 
     (* Build local symbol table of variables for this function *)
     let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
-        StringMap.empty (globals @ func.formals @ func.locals )
+        StringMap.empty (globals @ func.params ) (* TODO support declaration of variable anywhere *)
     in
 
     (* Return a variable from our local symbol table *)
@@ -136,7 +136,7 @@ let check (globals, functions) =
         else raise (Failure err)
       | Call(fname, args) as call ->
         let fd = find_func fname in
-        let param_length = List.length fd.formals in
+        let param_length = List.length fd.params in
         if List.length args != param_length then
           raise (Failure ("expecting " ^ string_of_int param_length ^
                           " arguments in " ^ string_of_expr call))
@@ -146,7 +146,7 @@ let check (globals, functions) =
                          " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
                in (check_assign ft et err, e')
           in
-          let args' = List.map2 check_call fd.formals args
+          let args' = List.map2 check_call fd.params args
           in (fd.rtyp, SCall(fname, args'))
     in
 
@@ -180,8 +180,8 @@ let check (globals, functions) =
     in (* body of check_func *)
     { srtyp = func.rtyp;
       sfname = func.fname;
-      sformals = func.formals;
-      slocals  = func.locals;
+      sparams = func.params;
+      (* TODO: local variable *)
       sbody = check_stmt_list func.body
     }
   in
