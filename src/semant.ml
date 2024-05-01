@@ -67,6 +67,7 @@ let rec check_expr e bind_list func_decl_list =
       | hd::tl -> (Array(check_array_helper l (fst (check_expr hd bind_list func_decl_list))), SArrayLit (List.map (function x -> check_expr x bind_list func_decl_list) l))
   ) in check_array l
   | Id var -> (type_of_identifier var symbols, SId var)
+  (* TODO: var now is an expr instead of str
   | Assign(var, e) as ex ->
     let lt = type_of_identifier var symbols
     and (rt, e') = check_expr e bind_list func_decl_list in
@@ -74,6 +75,7 @@ let rec check_expr e bind_list func_decl_list =
               string_of_typ rt ^ " in " ^ string_of_expr ex
     in
     (check_assign lt rt err, SAssign(var, (rt, e')))
+  *)
 
   | Binop(e1, op, e2) as e ->
     let (t1, e1') = check_expr e1 bind_list func_decl_list
