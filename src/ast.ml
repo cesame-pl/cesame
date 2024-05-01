@@ -30,7 +30,7 @@ type stmt =
   (* if ... elif ... else ... *)
   | If of (expr * stmt) list * stmt
   (* for loop *)
-  | For of (stmt option) * (expr option) * (expr option) * (stmt list) (* break is left for semantic checker? *)
+  | For of (stmt option) * (expr option) * (expr option) * stmt list (* break is left for semantic checker? *)
   (* while: TODO: make expr optional *)
   | While of expr * stmt
   (* int a; or int a = 1 + 2; the expression is optional *)

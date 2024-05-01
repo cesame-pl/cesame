@@ -167,4 +167,22 @@ in let check_fname name = let f_map = make_func_map (global_func_decls @ local_f
 | If(l, s) -> let check_if = 
   function (le, ls) -> (check_bool_expr le (globals @ locals) (global_func_decls @ local_func_decls) , let (_, _, lss) = (check_stmt (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp ls) in lss) in 
   let sl = List.map check_if l in let (_, _, ss) = check_stmt (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp s in (locals, local_func_decls, SIf(sl, ss))
+| For(init_stmt, end_cond, trans_e, s_l) -> let check_single_stmt gl ll gfl lfl rtyp s = 
+  match s with 
+    Expr e -> check_stmt gl ll gfl lfl rtyp s 
+  | VDecl(t, symbol, eop) -> check_stmt gl ll gfl lfl rtyp s
+  | _ -> raise(Failure("For loop only support single line statement")) in
+let (new_locals, _, s_init_stmt) = 
+(*return a new locals list to make sure that the expressions afterwards can see the init_stmt in case init statement is a definition*)
+(match init_stmt with 
+Some sit -> let (nl, nf, ssit) = check_single_stmt globals locals (global_func_decls @ local_func_decls) [] rtyp sit in (nl, nf, Some ssit)
+| None -> (locals, local_func_decls, None)) in 
+let s_end_cond = match end_cond with 
+  Some ec -> Some (check_bool_expr ec new_locals (global_func_decls @ local_func_decls))
+| None -> None in 
+let s_trans_e = (match trans_e with 
+Some ec -> Some (check_expr ec new_locals (global_func_decls @ local_func_decls))
+| None -> None) in 
+let (_, _, ss_l) = check_stmt new_locals [] (global_func_decls @ local_func_decls) [] rtyp (Block(s_l))
+in (locals, local_func_decls, SFor(s_init_stmt, s_end_cond, s_trans_e, ss_l))
 in check_stmt_list [] [] [] [] Int stmts
