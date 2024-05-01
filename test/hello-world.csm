@@ -1,5 +1,0 @@
-int main() {
-    String s;
-    s = "Hello, World!";
-    print(s);
-}
