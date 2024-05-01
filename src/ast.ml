@@ -16,12 +16,14 @@ type expr =
   | ArrayLit of expr list
   | Unaop of unaop * expr
   | Binop of expr * binop * expr
-  | Assign of string * expr
+  | Assign of expr * expr
   (* function call, myFunc(5, 3); *)
   | Call of string * expr list
   | New of newable (* New(NewStruct(...)) *)
   (* access member of a struct *)
-  | AccessMember of string * string (* *"a.name" *)
+  | AccessMember of expr * expr (* "a.name" "a[1].name" *)
+  (* access element of an array *)
+  | AccessEle of expr * expr (* "a[1]" "a[0][1]" *)
 
 (* "new Student" is an expression, "new Student {xxx} not yet supported " *)
 and newable =
@@ -98,8 +100,8 @@ let rec string_of_expr = function
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | FloatLit(f) -> string_of_float f
-  | StrLit(s) -> String.escaped s
-  | ArrayLit(a) -> 
+  | StrLit(s) -> "\"" ^ String.escaped s ^ "\""
+  | ArrayLit(a) ->  
     let rec string_of_list a = match a with
       [] -> ""
       | [element] -> string_of_expr element
@@ -110,11 +112,12 @@ let rec string_of_expr = function
     string_of_unaop o ^ string_of_expr e
   | Binop(e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_expr e2
-  | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | Assign(e1, e2) -> string_of_expr e1 ^ " = " ^ string_of_expr e2
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | New(n) -> string_of_newable n
-  | AccessMember(f, s) -> f ^ "." ^ s
+  | AccessMember(e1, e2) -> string_of_expr e1 ^ "." ^ string_of_expr e2
+  | AccessEle(e1, e2) -> string_of_expr e1 ^ "[" ^ string_of_expr e2 ^ "]"
   | Noexpr -> ""
 
 and string_of_newable = function
@@ -146,7 +149,7 @@ let string_of_vdecl_list l =
 (* Here, string_of_stmt, string_of_stmt_list, ..., string_of_fdef are all mutually recursive *)
 let rec string_of_stmt = function
     Block(stmts) ->
-    "\n" ^ "{" ^ string_of_stmt_list stmts ^ "}"
+    "\n" ^ "{" ^ string_of_stmt_list stmts ^ "} \n"
   | Expr(expr) -> string_of_expr expr ^ ";"
   | Return(expr) -> "return " ^ string_of_expr expr ^ "; "
   | If(e_s_l,Expr(Noexpr)) -> let string_of_if ((e, s)) =

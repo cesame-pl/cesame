@@ -1,7 +1,0 @@
-struct Student {
-    String name;
-    int age;
-};
-
-Student a;
-Student a = new Student;
