@@ -134,7 +134,7 @@ let rec string_of_stmt = function
   | Return(expr) -> "return " ^ string_of_expr expr ^ "; "
   | If(e_s_l,Expr(Noexpr)) -> let string_of_if ((e, s)) =
     "if (" ^ string_of_expr e ^ ")\n" ^ (string_of_stmt s)
-    in String.concat ("el") (List.map string_of_if e_s_l)
+    in String.concat ("el") (List.map string_of_if (List.rev e_s_l))
   | If(e_s_l, s) ->
     let string_of_if ((e, s)) =
     "if (" ^ string_of_expr e ^ ")\n" ^ (string_of_stmt s)
