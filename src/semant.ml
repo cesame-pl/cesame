@@ -178,11 +178,11 @@ let (new_locals, _, s_init_stmt) =
 Some sit -> let (nl, nf, ssit) = check_single_stmt globals locals (global_func_decls @ local_func_decls) [] rtyp sit in (nl, nf, Some ssit)
 | None -> (locals, local_func_decls, None)) in 
 let s_end_cond = match end_cond with 
-  Some ec -> Some (check_bool_expr ec new_locals (global_func_decls @ local_func_decls))
+  Some ec -> Some (check_bool_expr ec (globals @ new_locals) (global_func_decls @ local_func_decls))
 | None -> None in 
 let s_trans_e = (match trans_e with 
-Some ec -> Some (check_expr ec new_locals (global_func_decls @ local_func_decls))
+Some ec -> Some (check_expr ec (globals @ new_locals) (global_func_decls @ local_func_decls))
 | None -> None) in 
-let (_, _, ss_l) = check_stmt new_locals [] (global_func_decls @ local_func_decls) [] rtyp (Block(s_l))
+let (_, _, ss_l) = check_stmt (globals @ new_locals) [] (global_func_decls @ local_func_decls) [] rtyp (Block(s_l))
 in (locals, local_func_decls, SFor(s_init_stmt, s_end_cond, s_trans_e, ss_l))
 in check_stmt_list [] [] [] [] Int stmts
