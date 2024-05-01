@@ -21,9 +21,9 @@ type expr =
   | Call of string * expr list
   | New of newable (* New(NewStruct(...)) *)
   (* access member of a struct *)
-  | AccessMember of string * string (* "a.name" *)
+  | AccessMember of expr * expr (* "a.name" "a[1].name" *)
   (* access element of an array *)
-  | AccessEle of string * expr (* "a[1]" *)
+  | AccessEle of expr * expr (* "a[1]" "a[0][1]" *)
 
 (* "new Student" is an expression, "new Student {xxx} not yet supported " *)
 and newable =
@@ -42,7 +42,7 @@ type stmt =
   (* if ... elif ... else ... *)
   | If of (expr * stmt) list * stmt
   (* for loop *)
-  | For of (stmt option) * (expr option) * (expr option) * (stmt list) (* break is left for semantic checker? *)
+  | For of (stmt option) * (expr option) * (expr option) * stmt list (* break is left for semantic checker? *)
   (* while: TODO: make expr optional *)
   | While of expr * stmt
   (* int a; or int a = 1 + 2; the expression is optional *)
@@ -100,8 +100,8 @@ let rec string_of_expr = function
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | FloatLit(f) -> string_of_float f
-  | StrLit(s) -> String.escaped s
-  | ArrayLit(a) -> 
+  | StrLit(s) -> "\"" ^ String.escaped s ^ "\""
+  | ArrayLit(a) ->  
     let rec string_of_list a = match a with
       [] -> ""
       | [element] -> string_of_expr element
@@ -116,8 +116,8 @@ let rec string_of_expr = function
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | New(n) -> string_of_newable n
-  | AccessMember(f, s) -> f ^ "." ^ s
-  | AccessEle(a, i) -> a ^ "[" ^ string_of_expr i ^ "]"
+  | AccessMember(e1, e2) -> string_of_expr e1 ^ "." ^ string_of_expr e2
+  | AccessEle(e1, e2) -> string_of_expr e1 ^ "[" ^ string_of_expr e2 ^ "]"
   | Noexpr -> ""
 
 and string_of_newable = function
@@ -149,16 +149,16 @@ let string_of_vdecl_list l =
 (* Here, string_of_stmt, string_of_stmt_list, ..., string_of_fdef are all mutually recursive *)
 let rec string_of_stmt = function
     Block(stmts) ->
-    "\n" ^ string_of_stmt_list stmts ^ "}"
+    "\n" ^ "{" ^ string_of_stmt_list stmts ^ "} \n"
   | Expr(expr) -> string_of_expr expr ^ ";"
   | Return(expr) -> "return " ^ string_of_expr expr ^ "; "
   | If(e_s_l,Expr(Noexpr)) -> let string_of_if ((e, s)) =
     "if (" ^ string_of_expr e ^ ")\n" ^ (string_of_stmt s)
-    in String.concat ("el") (List.map string_of_if e_s_l)
+    in String.concat ("el") (List.map string_of_if (List.rev e_s_l))
   | If(e_s_l, s) ->
     let string_of_if ((e, s)) =
     "if (" ^ string_of_expr e ^ ")\n" ^ (string_of_stmt s)
-    in String.concat (" " ^ "el") (List.map string_of_if e_s_l) ^
+    in String.concat (" " ^ "el") (List.map string_of_if (List.rev e_s_l)) ^
     (" ") ^ "else\n" ^ (string_of_stmt s)
   | For(stmt_init, e_cond, e_trans, stmt_l) ->
     "for (" ^ string_of_opt_stmt stmt_init ^ string_of_opt_expr e_cond ^ "; " ^
