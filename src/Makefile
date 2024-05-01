@@ -1,4 +1,4 @@
-all : cesame # You can also run "make" in the src directory.
+all : clean cesame # You can also run "make" in the src directory.
 
 cesame :parser.cmo scanner.cmo ast.cmo sast.cmo semant.cmo cesame.cmo
 	ocamlc -w A -o cesame $^
@@ -48,5 +48,3 @@ scanner.cmx : parser.cmx
 .PHONY : clean
 clean :
 	rm -rf ast.mli *.cmi *.cmo parser.ml parser.mli scanner.ml cesame
-
-all: clean $(TARGET)
