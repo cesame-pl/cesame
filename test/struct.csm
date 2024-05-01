@@ -5,3 +5,5 @@ struct Student {
 
 Student a;
 Student a = new Student;
+a.name = "Mike";
+a.age = 22

@@ -16,12 +16,14 @@ type expr =
   | ArrayLit of expr list
   | Unaop of unaop * expr
   | Binop of expr * binop * expr
-  | Assign of string * expr
+  | Assign of expr * expr
   (* function call, myFunc(5, 3); *)
   | Call of string * expr list
   | New of newable (* New(NewStruct(...)) *)
   (* access member of a struct *)
-  | AccessMember of string * string (* *"a.name" *)
+  | AccessMember of string * string (* "a.name" *)
+  (* access element of an array *)
+  | AccessEle of string * expr (* "a[1]" *)
 
 (* "new Student" is an expression, "new Student {xxx} not yet supported " *)
 and newable =
@@ -110,11 +112,12 @@ let rec string_of_expr = function
     string_of_unaop o ^ string_of_expr e
   | Binop(e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_expr e2
-  | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | Assign(e1, e2) -> string_of_expr e1 ^ " = " ^ string_of_expr e2
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | New(n) -> string_of_newable n
   | AccessMember(f, s) -> f ^ "." ^ s
+  | AccessEle(a, i) -> a ^ "[" ^ string_of_expr i ^ "]"
   | Noexpr -> ""
 
 and string_of_newable = function
