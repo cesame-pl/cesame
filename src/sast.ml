@@ -22,6 +22,7 @@ type sstmt =
   | SFor of (sstmt option) * (sexpr option) * (sexpr option) * (sstmt)
   | SVDecl of typ * string * sexpr option
   | SWhile of sexpr * sstmt
+  | SIF of (sexpr * sstmt) list * sstmt
   (* return *)
   | SReturn of sexpr
   | SFdef of sfunc_def

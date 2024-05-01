@@ -129,7 +129,7 @@ let string_of_vdecl_list l =
 (* Here, string_of_stmt, string_of_stmt_list, ..., string_of_fdef are all mutually recursive *)
 let rec string_of_stmt = function
     Block(stmts) ->
-    "\n" ^ string_of_stmt_list stmts ^ "}"
+    "\n" ^ "{" ^ string_of_stmt_list stmts ^ "}"
   | Expr(expr) -> string_of_expr expr ^ ";"
   | Return(expr) -> "return " ^ string_of_expr expr ^ "; "
   | If(e_s_l,Expr(Noexpr)) -> let string_of_if ((e, s)) =
@@ -138,7 +138,7 @@ let rec string_of_stmt = function
   | If(e_s_l, s) ->
     let string_of_if ((e, s)) =
     "if (" ^ string_of_expr e ^ ")\n" ^ (string_of_stmt s)
-    in String.concat (" " ^ "el") (List.map string_of_if e_s_l) ^
+    in String.concat (" " ^ "el") (List.map string_of_if (List.rev e_s_l)) ^
     (" ") ^ "else\n" ^ (string_of_stmt s)
   | For(stmt_init, e_cond, e_trans, stmt_l) ->
     "for (" ^ string_of_opt_stmt stmt_init ^ string_of_opt_expr e_cond ^ "; " ^
