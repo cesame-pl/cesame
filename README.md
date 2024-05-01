@@ -1,7 +1,7 @@
 # Cesame
 Cesame: A C-like programming language that features native support for first-class functions. Cesame also supports non-primitive types such as String, Array, and Struct. Cesame abstracts away pointers and stores most data on the heap, except for primitives and references to objects, similar to Java. The compiler is written in OCaml with C libraries and targets LLVM IR.
 
-## High-light
+## High-lights
 * Python-like program structure: Instead of starting with main(), we implement our program as a list of statements, and running the programming is just running through statements from top to bottom.
 * Better control flow: Added support for if-elif-else statement and for loop.
 * Add support for Struct, which declares an aggregated type (struct name and only struct name should start with a capitalized letter).
