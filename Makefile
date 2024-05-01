@@ -1,22 +1,24 @@
-all : cesame # You can also run "make" in the src directory.
-
+all : clean cesame  # Automatically clean first "rm -f *.cmi *.cmo"
+ 
 cesame :parser.cmo scanner.cmo ast.cmo sast.cmo semant.cmo cesame.cmo
 	ocamlc -w A -o cesame $^
+	rm -f *.cmi *.cmo
 
-%.cmo : %.ml
-	ocamlc -w A -c $<
+%.cmo : ./src/%.ml
+	ocamlc -w A -c $< -o $@
 
-%.cmi : %.mli
-	ocamlc -w A -c $<
+%.cmi : ./src/%.mli
+	ocamlc -w A -c $< -o $@
 
-scanner.ml : scanner.mll
+./src/scanner.ml : ./src/scanner.mll
 	ocamllex $^
 
-parser.ml parser.mli : parser.mly
+./src/parser.ml ./src/parser.mli : ./src/parser.mly
 	ocamlyacc $^
 
-ast.mli : ast.ml
-	ocamlc -i $^ > ast.mli
+./src/ast.mli : ./src/ast.ml
+	ocamlc -i $^ > ./src/ast.mli
+
 # Depedencies from ocamldep
 cesame.cmo : \
     semant.cmo \
@@ -44,9 +46,7 @@ scanner.cmx : parser.cmx
 
 ##############################
 
-
 .PHONY : clean
 clean :
-	rm -rf ast.mli *.cmi *.cmo parser.ml parser.mli scanner.ml cesame
-
-all: clean $(TARGET)
+	rm -rf ./src/*.mli ./src/*.cmi ./src/*.cmo *.cmi *.cmo \
+    ./src/parser.ml ./src/parser.mli ./src/scanner.ml cesame
