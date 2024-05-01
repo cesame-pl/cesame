@@ -48,6 +48,7 @@ let rec check_expr e bind_list func_decl_list =
   let func_map = make_func_map(func_decl_list) in
   match e with
    Literal l -> (Int, SLiteral l)
+  | Noexpr -> (Void, Noexpr)
   | BoolLit l -> (Bool, SBoolLit l)
   | StrLit s  -> (String, SStrLit s)
   | ArrayLit l -> let rec check_array_helper l prev_typ = (
@@ -163,4 +164,25 @@ in let check_fname name = let f_map = make_func_map (global_func_decls @ local_f
   | None -> name in let sname = check_fname f.fname in 
   (*Check the statements, with the globals being a joint list of current locals and globals, with the same for functions. Local variables are parameters, local function is only itself and the return type is the return type of the funtion*)
   let sstmts = check_stmt_list (globals @ locals) sbinds (global_func_decls @ local_func_decls) [f] f.rtyp f.body in (locals, f::local_func_decls, SFdef({srtyp = f.rtyp; sfname = sname; sparams = f.params; sbody = sstmts})) in check_func globals locals global_func_decls local_func_decls f
+| If(l, s) -> let check_if = 
+  function (le, ls) -> (check_bool_expr le (globals @ locals) (global_func_decls @ local_func_decls) , let (_, _, lss) = (check_stmt (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp ls) in lss) in 
+  let sl = List.map check_if l in let (_, _, ss) = check_stmt (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp s in (locals, local_func_decls, SIf(sl, ss))
+| For(init_stmt, end_cond, trans_e, s_l) -> let check_single_stmt gl ll gfl lfl rtyp s = 
+  match s with 
+    Expr e -> check_stmt gl ll gfl lfl rtyp s 
+  | VDecl(t, symbol, eop) -> check_stmt gl ll gfl lfl rtyp s
+  | _ -> raise(Failure("For loop only support single line statement")) in
+let (new_locals, _, s_init_stmt) = 
+(*return a new locals list to make sure that the expressions afterwards can see the init_stmt in case init statement is a definition*)
+(match init_stmt with 
+Some sit -> let (nl, nf, ssit) = check_single_stmt globals locals (global_func_decls @ local_func_decls) [] rtyp sit in (nl, nf, Some ssit)
+| None -> (locals, local_func_decls, None)) in 
+let s_end_cond = match end_cond with 
+  Some ec -> Some (check_bool_expr ec (globals @ new_locals) (global_func_decls @ local_func_decls))
+| None -> None in 
+let s_trans_e = (match trans_e with 
+Some ec -> Some (check_expr ec (globals @ new_locals) (global_func_decls @ local_func_decls))
+| None -> None) in 
+let (_, _, ss_l) = check_stmt (globals @ new_locals) [] (global_func_decls @ local_func_decls) [] rtyp (Block(s_l))
+in (locals, local_func_decls, SFor(s_init_stmt, s_end_cond, s_trans_e, ss_l))
 in check_stmt_list [] [] [] [] Int stmts
