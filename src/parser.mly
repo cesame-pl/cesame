@@ -108,6 +108,8 @@ stmt:
   {
     For($3, $5, $7, $10)
   }
+  | CONTINUE                                { Continue       }
+  | BREAK                                   { Break          }
   /* return */
   | RETURN expr SEMI                        { Return $2      }
   /* non-first class function definition*/
@@ -147,6 +149,7 @@ expr:
   | expr OR     expr { Binop($1, Or,    $3)   }
   | LPAREN expr RPAREN { $2                   }
   /* function call */
+  /* todo: function call can be a lvalue */
   | ID LPAREN args_opt RPAREN { Call ($1, $3) }
   /* new object, like "new Student {1, 2}", or simply "new Student", although it's a expr, it should not be used alone (without being assigned to some variable) */
   | NEW STRUCTID     { New(NewStruct $2)      }
@@ -157,6 +160,8 @@ lvalue:
   | lvalue DOT ID  { AccessMember($1, Id $3)   }
   /* Access array elements */
   | lvalue LSQBRACE expr RSQBRACE { AccessEle($1, $3) }
+
+/* potentially: we can just let expr DOT expr and expr LSQBRACE expr RSQBRACE, and check it semantically */
 
 /* args_opt*/
 args_opt:
