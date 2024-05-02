@@ -53,6 +53,9 @@ type stmt =
   | Return of expr
   | FDef of func_def (* Not first class function *)
   | Delete of string
+  (* Do we want to add break and continue? Feels like it's going to complicate our control flow *)
+  | Break
+  | Continue
 
 (* func_def: ret_typ fname formals locals body *)
 (* Mutually recursive data types with stmt: https://v2.ocaml.org/learn/tutorials/data_types_and_matching.html *)
@@ -168,6 +171,8 @@ let rec string_of_stmt = function
     None -> "; " | Some(opt) -> " = " ^ string_of_expr opt ^ "; ")
   | SDef(s, l) -> "struct " ^ s ^ " {\n" ^ string_of_vdecl_list l  ^ "}\n"
   | FDef(f) -> string_of_fdef f
+  | Break -> "break"
+  | Continue -> "continue"
 
 
 and string_of_stmt_list l =
