@@ -67,15 +67,15 @@ let rec check_expr e bind_list func_decl_list =
       | hd::tl -> (Array(check_array_helper l (fst (check_expr hd bind_list func_decl_list))), SArrayLit (List.map (function x -> check_expr x bind_list func_decl_list) l))
   ) in check_array l
   | Id var -> (type_of_identifier var symbols, SId var)
-  (* TODO: var now is an expr instead of str
-  | Assign(var, e) as ex ->
-    let lt = type_of_identifier var symbols
-    and (rt, e') = check_expr e bind_list func_decl_list in
+  (* TODO: var now is an expr instead of str *)
+  | Assign(e1, e2) as ex ->
+    (* lt: left type, rt: right type *)
+    let (lt, e1) = check_expr e1 bind_list func_decl_list
+    and (rt, e2) = check_expr e2 bind_list func_decl_list in
     let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
               string_of_typ rt ^ " in " ^ string_of_expr ex
     in
-    (check_assign lt rt err, SAssign(var, (rt, e')))
-  *)
+    (check_assign lt rt err, SAssign((lt, e1), (rt, e2)))
 
   | Binop(e1, op, e2) as e ->
     let (t1, e1') = check_expr e1 bind_list func_decl_list
@@ -165,7 +165,7 @@ in let check_fname name = let f_map = make_func_map (global_func_decls @ local_f
   Some f -> raise(Failure("Do not support duplicated function name " ^ name))
   | None -> name in let sname = check_fname f.fname in 
   (*Check the statements, with the globals being a joint list of current locals and globals, with the same for functions. Local variables are parameters, local function is only itself and the return type is the return type of the funtion*)
-  let sstmts = check_stmt_list (globals @ locals) sbinds (global_func_decls @ local_func_decls) [f] f.rtyp f.body in (locals, f::local_func_decls, SFdef({srtyp = f.rtyp; sfname = sname; sparams = f.params; sbody = sstmts})) in check_func globals locals global_func_decls local_func_decls f
+  let sstmts = check_stmt_list (globals @ locals) sbinds (global_func_decls @ local_func_decls) [f] f.rtyp f.body in (locals, f::local_func_decls, SFDef({srtyp = f.rtyp; sfname = sname; sparams = f.params; sbody = sstmts})) in check_func globals locals global_func_decls local_func_decls f
 | If(l, s) -> let check_if = 
   function (le, ls) -> (check_bool_expr le (globals @ locals) (global_func_decls @ local_func_decls) , let (_, _, lss) = (check_stmt (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp ls) in lss) in 
   let sl = List.map check_if l in let (_, _, ss) = check_stmt (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp s in (locals, local_func_decls, SIf(sl, ss))
