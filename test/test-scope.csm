@@ -1,0 +1,11 @@
+String s = "Hello world";
+int a = 1;
+print(a);
+int f(int a) {
+    int d = 1;
+}
+{
+int b = 2;
+}
+print(b);
+print(d);

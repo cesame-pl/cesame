@@ -152,11 +152,11 @@ expr:
   | NEW STRUCTID     { New(NewStruct $2)      }
 
 lvalue:
-    ID { Id($1) }
+    ID { Id $1 }
   /* Access struct members */
-  | ID DOT ID  { AccessMember($1, $3)   }
+  | lvalue DOT ID  { AccessMember($1, Id $3)   }
   /* Access array elements */
-  | ID LSQBRACE expr RSQBRACE { AccessEle($1, $3) }
+  | lvalue LSQBRACE expr RSQBRACE { AccessEle($1, $3) }
 
 /* args_opt*/
 args_opt:
