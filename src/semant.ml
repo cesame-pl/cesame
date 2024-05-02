@@ -117,41 +117,60 @@ let check_bool_expr e bind_list function_list =
       | Bool -> (t, e')
       |  _ -> raise (Failure ("expected Boolean expression in " ^ string_of_expr e)) in
 (*check the declarations, pass the local declaration and local functions, return the new declaration list, the original function list and the checked sast*)
-let check_vdecl bind_list func_decl_list vdecl = 
-  let symbols = make_symbol_map(bind_list) in
+let check_vdecl globals locals func_decl_list vdecl = 
+  let symbols = make_symbol_map(locals) in
   (*Make a map according to the locals list and find variable name in it. If not found, then it is fine, or its a depilcated declaration and need to throw an errot*)
   match vdecl with
     (t, s, None) -> (match StringMap.find_opt s symbols with 
-                      None -> ((t,s)::bind_list, SVDecl(t, s, None))
+                      None -> ((t,s)::locals, SVDecl(t, s, None))
                       | _ -> raise(Failure("Duplicated definition of "^s^"!\n")))
     |(t, s, Some e) -> (match StringMap.find_opt s symbols with 
-                  None -> let (rt, ex) = check_expr e bind_list func_decl_list in (if t = rt then ((t,s)::bind_list, SVDecl(t, s, Some (rt,ex))) else raise(Failure(string_of_typ t ^ " does not match " ^ string_of_typ rt)))
+                  None -> let (rt, ex) = check_expr e (globals @ locals) func_decl_list in (if t = rt then ((t,s)::locals, SVDecl(t, s, Some (rt,ex))) else raise(Failure(string_of_typ t ^ " does not match " ^ string_of_typ rt)))
 
                   | _ -> raise(Failure("Duplicated definition of "^s^"!\n"))) in 
 (*Input: globals: variables in the parent block;
-         locals : variables that has been added in this block*)
+         locals : variables that has been added in this block
+         global_func_decls & local_func_decls: similar to globals and locals, apply to function definitions
+         rtyp: the return type of the function that the block belongs to, the program will by default return an int
+  Output: an list of sstmt
+  ToDo: Check the first statement recursively until the end of the list*)
+(*Note that all the functions takes advantage of the StringMap.add function, if there is a duplicated addition, the StringMap.add will update the original key, so pass (globals @ locals) will finally replace the map with values of locals in the map, which is what we want. The expression will see the closest definition, which is local*)
 let rec check_stmt_list globals locals global_func_decls local_func_decls rtyp s = 
 match s with
 [] -> []
 | s :: sl -> let (new_locals, new_local_func_decls, s_stmt) = check_stmt globals locals global_func_decls local_func_decls rtyp s in s_stmt :: check_stmt_list globals new_locals global_func_decls new_local_func_decls rtyp sl
-(* Return a semantically-checked statement i.e. containing sexprs *)
+(*Input: Same as check_stmt_list
+  Output: a triple of new locals, new local function decarations and a semantically checked statement (we do not need to return globals because the statement will never change the global variables)*)
 and check_stmt globals locals global_func_decls local_func_decls rtyp =function
 (* A block is correct if each statement is correct and nothing
  follows any Return statement.  Nested blocks are flattened. *)
+(*If the statement is a child block, the globals and locals now are all globals for the child block, and the locals for the child is empty, and the block will never affect the parents' locals so we will return the original locals*)
 Block sl -> (locals, local_func_decls, SBlock (check_stmt_list (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp sl))
+(*check_expr:
+   Input: a list of visible variables, a list of visible function decls and the expression to be checked
+   Output: a semantically checked expression (type * sx)*)
+(*ToDo: If the statement is an expression, it will not modify the locals or globals and all globals and locals should be visible to the expression so that we can do the type check*)
 | Expr e -> (locals, local_func_decls, SExpr ((check_expr e (globals @ locals) (global_func_decls @ local_func_decls))))
 (* | If(e, st1, st2) ->
 SIf(check_bool_expr e, check_stmt st1, check_stmt st2) *)
-
-| VDecl(t, s, eop) -> let (new_locals, svdec) = check_vdecl locals (global_func_decls @ local_func_decls) (t, s, eop) in (new_locals, local_func_decls, svdec)
+(*check_vdecl:
+   Input: globals, locals, visible function calls
+   Output: new locals, semantically checked variable declarations*)
+(*ToDo: Check whether there is duplicated local variable declaration, if so, throw an error, and check correspondence of left and right type, note that eop is an expression, so we need to pass both the locals and globals to the function. Return a new local variable list that includes this vdecl*)
+| VDecl(t, s, eop) -> let (new_locals, svdec) = check_vdecl globals locals (global_func_decls @ local_func_decls) (t, s, eop) in (new_locals, local_func_decls, svdec)
+(*ToDo: Check whether the expression is a vaild bool expression and check the statement. Note that according to the ast, the statement can either be a statement or a block, if it is a single statement, then it will belong to the same block, if it is a block, the recursion will make sure that the scope is correct, so we do not need to merge the locals and globals here*)
 | While(e, st) ->
-(locals, local_func_decls, let (_, _, sstmts) = check_stmt (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp st in SWhile(check_bool_expr e (globals @ locals) (global_func_decls @ local_func_decls), sstmts))
+(locals, local_func_decls, let (_, _, sstmts) = check_stmt globals locals global_func_decls local_func_decls rtyp st in SWhile(check_bool_expr e (globals @ locals) (global_func_decls @ local_func_decls), sstmts))
+(*ToDo: Check whether the return type corresponds to the return type of the function the statement belongs to*)
 | Return e ->
 let (t, e') = check_expr e (globals @ locals) (global_func_decls @ local_func_decls) in
 if t = rtyp then (locals, local_func_decls, SReturn (t, e'))
 else raise (
     Failure ("return gives " ^ string_of_typ t ^ " expected " ^
              string_of_typ rtyp ^ " in " ^ string_of_expr e))
+(*ToDo: 1. Check whether there is duplicated function name (check_fname)
+        2. Check whether there is duplicated parameters (check-param)
+        3. Check whether the statement list is correct. The globals for this list will be (globals @ locals) and the locals will be the parameters, the globals functions for starement list is also the merged version, the local function is itself (avoid nested duplicated declaration)*)
 | FDef(f) -> let check_func globals locals global_func_decls local_func_decls f =
   (*Check whether there is deplicated params*)
   let check_param bind_list p = let p_map = make_symbol_map bind_list in match StringMap.find_opt (snd p) p_map with
@@ -167,16 +186,18 @@ in let check_fname name = let f_map = make_func_map (global_func_decls @ local_f
   | None -> name in let sname = check_fname f.fname in 
   (*Check the statements, with the globals being a joint list of current locals and globals, with the same for functions. Local variables are parameters, local function is only itself and the return type is the return type of the funtion*)
   let sstmts = check_stmt_list (globals @ locals) sbinds (global_func_decls @ local_func_decls) [f] f.rtyp f.body in (locals, f::local_func_decls, SFDef({srtyp = f.rtyp; sfname = sname; sparams = f.params; sbody = sstmts})) in check_func globals locals global_func_decls local_func_decls f
+(*ToDo: check each bool expression in the expression list and check the statement list. According to the if-elif ast, the statement list is actually a block, so the behavior is the same as entering a block*)
 | If(l, s) -> let check_if = 
   function (le, ls) -> (check_bool_expr le (globals @ locals) (global_func_decls @ local_func_decls) , let (_, _, lss) = (check_stmt (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp ls) in lss) in 
   let sl = List.map check_if l in let (_, _, ss) = check_stmt (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp s in (locals, local_func_decls, SIf(sl, ss))
+(*Check wheher the initial statement is a single statement (do not support block, if, while, etc), check end condition (if any), is a vaild bool condition, check the trans expression and check the statement list*)
 | For(init_stmt, end_cond, trans_e, s_l) -> let check_single_stmt gl ll gfl lfl rtyp s = 
   match s with 
     Expr e -> check_stmt gl ll gfl lfl rtyp s 
   | VDecl(t, symbol, eop) -> check_stmt gl ll gfl lfl rtyp s
   | _ -> raise(Failure("For loop only support single line statement")) in
 let (new_locals, _, s_init_stmt) = 
-(*return a new locals list to make sure that the expressions afterwards can see the init_stmt in case init statement is a definition*)
+(*return a new locals list to make sure that the expressions afterwards can see the init_stmt in case init statement is a definition. Note that all the stuff in () belongs to a separate block*)
 (match init_stmt with 
 Some sit -> let (nl, nf, ssit) = check_single_stmt (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp sit in (nl, nf, Some ssit)
 | None -> (locals, local_func_decls, None)) in 
