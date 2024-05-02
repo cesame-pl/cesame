@@ -1,0 +1,17 @@
+int a;
+int main() {
+        int a;
+        for (int a = 0; a < 10; a = a + 1) {
+                int a;
+                {
+                        int a;
+                }
+        }
+        while (a > 0) {
+                if (a > 0) {
+                        int a;
+                        return a;
+                }
+        }
+        return a;
+}
