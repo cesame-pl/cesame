@@ -91,6 +91,7 @@ let rec check_expr e bind_list func_decl_list =
           Add | Sub when t1 = Int -> Int
         | Equal | Neq -> Bool
         | Lt when t1 = Int -> Bool
+        | Gt when t1 = Int -> Bool
         | And | Or when t1 = Bool -> Bool
         | _ -> raise (Failure err)
       in
@@ -131,13 +132,12 @@ let check_vdecl bind_list func_decl_list vdecl =
 let rec check_stmt_list globals locals global_func_decls local_func_decls rtyp s = 
 match s with
 [] -> []
-| Block sl :: sl'  -> check_stmt_list globals locals global_func_decls local_func_decls rtyp (sl @ sl')(* Flatten blocks *)
 | s :: sl -> let (new_locals, new_local_func_decls, s_stmt) = check_stmt globals locals global_func_decls local_func_decls rtyp s in s_stmt :: check_stmt_list globals new_locals global_func_decls new_local_func_decls rtyp sl
 (* Return a semantically-checked statement i.e. containing sexprs *)
 and check_stmt globals locals global_func_decls local_func_decls rtyp =function
 (* A block is correct if each statement is correct and nothing
  follows any Return statement.  Nested blocks are flattened. *)
-Block sl -> (locals, local_func_decls, SBlock (check_stmt_list globals locals global_func_decls local_func_decls rtyp sl))
+Block sl -> (locals, local_func_decls, SBlock (check_stmt_list (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp sl))
 | Expr e -> (locals, local_func_decls, SExpr ((check_expr e (globals @ locals) (global_func_decls @ local_func_decls))))
 (* | If(e, st1, st2) ->
 SIf(check_bool_expr e, check_stmt st1, check_stmt st2) *)
@@ -177,14 +177,14 @@ in let check_fname name = let f_map = make_func_map (global_func_decls @ local_f
 let (new_locals, _, s_init_stmt) = 
 (*return a new locals list to make sure that the expressions afterwards can see the init_stmt in case init statement is a definition*)
 (match init_stmt with 
-Some sit -> let (nl, nf, ssit) = check_single_stmt globals locals (global_func_decls @ local_func_decls) [] rtyp sit in (nl, nf, Some ssit)
+Some sit -> let (nl, nf, ssit) = check_single_stmt (globals @ locals) [] (global_func_decls @ local_func_decls) [] rtyp sit in (nl, nf, Some ssit)
 | None -> (locals, local_func_decls, None)) in 
 let s_end_cond = match end_cond with 
-  Some ec -> Some (check_bool_expr ec (globals @ new_locals) (global_func_decls @ local_func_decls))
+  Some ec -> Some (check_bool_expr ec (globals @ locals @ new_locals) (global_func_decls @ local_func_decls))
 | None -> None in 
 let s_trans_e = (match trans_e with 
-Some ec -> Some (check_expr ec (globals @ new_locals) (global_func_decls @ local_func_decls))
+Some ec -> Some (check_expr ec (globals @ locals @ new_locals) (global_func_decls @ local_func_decls))
 | None -> None) in 
-let (_, _, ss_l) = check_stmt (globals @ new_locals) [] (global_func_decls @ local_func_decls) [] rtyp (Block(s_l))
+let (_, _, ss_l) = check_stmt (globals @ locals @ new_locals) [] (global_func_decls @ local_func_decls) [] rtyp (Block(s_l))
 in (locals, local_func_decls, SFor(s_init_stmt, s_end_cond, s_trans_e, ss_l))
 in check_stmt_list [] [] [] [] Int stmts
