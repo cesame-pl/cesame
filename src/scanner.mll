@@ -5,6 +5,7 @@
 let squote = '\''
 let lletter = ['a'-'z']
 let uletter = ['A'-'Z']
+let letter = lletter | uletter
 let heading_spaces = ('\r' | '\n' | "\r\n") [' ' '\t']*
 
 let exp = ('e'|'E')
@@ -66,14 +67,18 @@ rule token = parse
 | "Array"  { ARRAY }
 | "Func"   { FUNC }
 | "->"     { ARROW }
+| "new"    { NEW }
+| "delete" { DELETE }
 (* ID *)
-| uletter (digit | lletter | uletter | '_')* as lem { STRUCTID(lem) }
-| lletter (digit | lletter | uletter | '_')* as lem { ID(lem) }
+| uletter (digit | letter | '_')* as lem { STRUCTID(lem) }
+| lletter (digit | letter | '_')* as lem { ID(lem) }
 (* Literals *)
 | "true"   { BLIT(true)  }
 | "false"  { BLIT(false) }
 | int as lem  { LITERAL(int_of_string lem) }
 | float as lem { FLIT(float_of_string lem) }
+(* dots that are not in between numbers are parsed just as a single dot*)
+| "."      { DOT }
 | squote _ squote as lem { CLIT(lem.[1]) }
 | squote '\\' ('n' | 't' | '\\' | '\'') squote as lem { 
   let c = match lem.[2] with

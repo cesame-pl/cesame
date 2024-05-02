@@ -10,6 +10,8 @@ open Ast
 %token IF ELIF ELSE WHILE INT CHAR BOOL FLOAT STRUCT ARRAY
 %token RETURN COMMA
 %token STRING
+%token NEW DELETE
+%token DOT
 %token <int> LITERAL
 %token <char> CLIT
 %token <bool> BLIT
@@ -59,7 +61,8 @@ typ:
   | BOOL  { Bool  }
   | FLOAT { Float }
   | STRING { String }
-  | ARRAY LT typ GT { Array($3) }
+  | STRUCTID { Struct $1 }
+  | ARRAY LT typ GT { Array $3 }
 
 /* fdef */
 fdef:
@@ -92,7 +95,7 @@ stmt:
   | LBRACE stmt_list RBRACE                 { Block $2 }
   | typ ID ASSIGN expr SEMI                 { VDecl($1, $2, Some($4)) }
   | typ ID SEMI                             { VDecl($1, $2, None) }
-  | STRUCT STRUCTID LBRACE vdecl_list RBRACE SEMI { SDef($2, $4)   }
+  | STRUCT STRUCTID LBRACE vdecl_list RBRACE SEMI { SDef($2, $4) }
   /* if (condition) { block1 } else { block2 } */
   /* if (condition) stmt else stmt */
   /* if (condition) stmt (elif stmt)+ NOELSE*/
@@ -109,6 +112,8 @@ stmt:
   | RETURN expr SEMI                        { Return $2      }
   /* non-first class function definition*/
   | fdef                                    { $1             }
+  /* delete */
+  | DELETE ID                               { Delete $2      }
 
 
 ifelifstmt:
@@ -122,7 +127,10 @@ expr:
   | FLIT             { FloatLit($1)           }
   | STRLIT           { StrLit($1)             }
   | LSQBRACE elements RSQBRACE { ArrayLit($2) }
-  | ID               { Id($1)                 }
+  | lvalue           { $1                     }
+  | lvalue ASSIGN expr { Assign($1, $3)       }
+  | lvalue INC       { Assign($1, Binop($1, Add, Literal(1))) }
+  | lvalue DEC       { Assign($1, Binop($1, Sub, Literal(1))) }
   | NOT expr         { Unaop(Not, $2)         }
   | expr MUL    expr { Binop($1, Mul,   $3)   }
   | expr DIV    expr { Binop($1, Div,   $3)   }
@@ -134,15 +142,21 @@ expr:
   | expr GT     expr { Binop($1, Gt,    $3)   }
   | expr LT     expr { Binop($1, Lt,    $3)   }
   | expr EQ     expr { Binop($1, Equal, $3)   }
-  | expr NEQ    expr { Binop($1, Neq, $3)     }
+  | expr NEQ    expr { Binop($1, Neq,   $3)   }
   | expr AND    expr { Binop($1, And,   $3)   }
   | expr OR     expr { Binop($1, Or,    $3)   }
-  | ID ASSIGN expr   { Assign($1, $3)         }
-  | ID INC           { Assign($1, Binop(Id($1), Add, Literal(1))) }
-  | ID DEC           { Assign($1, Binop(Id($1), Sub, Literal(1))) }
   | LPAREN expr RPAREN { $2                   }
-  /* call */
+  /* function call */
   | ID LPAREN args_opt RPAREN { Call ($1, $3) }
+  /* new object, like "new Student {1, 2}", or simply "new Student", although it's a expr, it should not be used alone (without being assigned to some variable) */
+  | NEW STRUCTID     { New(NewStruct $2)      }
+
+lvalue:
+    ID { Id $1 }
+  /* Access struct members */
+  | lvalue DOT ID  { AccessMember($1, Id $3)   }
+  /* Access array elements */
+  | lvalue LSQBRACE expr RSQBRACE { AccessEle($1, $3) }
 
 /* args_opt*/
 args_opt:
@@ -159,11 +173,11 @@ args:
   | expr COMMA args { $1::$3 }
 
 opt_expr:
-  /*nothing*/ { None }
-| expr { Some($1) }
+    /*nothing*/ { None }
+  | expr { Some($1) }
 
 opt_loop_init:
-  /*nothing*/ { None } /* for option */
-| expr { Some(Expr $1) }
-(* TODO: Can typ ID ASSIGN expr be expressed with some variation of vdecl *)
-| typ ID ASSIGN expr {  Some(VDecl($1, $2, Some($4))) }
+    /*nothing*/ { None } /* for option */
+  | expr { Some(Expr $1) }
+  (* TODO: Can typ ID ASSIGN expr be expressed with some variation of vdecl *)
+  | typ ID ASSIGN expr {  Some(VDecl($1, $2, Some($4))) }

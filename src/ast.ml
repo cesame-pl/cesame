@@ -3,7 +3,7 @@
 type unaop = Not
 type binop = Mul | Div | Mod | Add | Sub | Equal | Neq | Ge | Le | Gt | Lt | And | Or
 
-type typ = Int | Char | Bool | Float | String | Array of typ | Void
+type typ = Int | Char | Bool | Float | String | Array of typ | Void | Struct of string (* for example struct "Shape" *)
 
 type expr =
   Noexpr
@@ -16,9 +16,21 @@ type expr =
   | ArrayLit of expr list
   | Unaop of unaop * expr
   | Binop of expr * binop * expr
-  | Assign of string * expr
-  (* function call *)
+  | Assign of expr * expr
+  (* function call, myFunc(5, 3); *)
   | Call of string * expr list
+  | New of newable (* New(NewStruct(...)) *)
+  (* access member of a struct *)
+  | AccessMember of expr * expr (* "a.name" "a[1].name" *)
+  (* access element of an array *)
+  | AccessEle of expr * expr (* "a[1]" "a[0][1]" *)
+
+(* "new Student" is an expression, "new Student {xxx} not yet supported " *)
+and newable =
+  NewStruct of string (* new struct object, "new Student {name = "abc", age = 10}" not yet supported, we're thinking whether to use expr list option or a new type to define the body *)
+  (* | NewFunc TODO *)
+(* For new struct object, Student a = new Student {name = "abc", age = 10}, not yet supported *)
+
 
 (* int x: name binding *)
 type bind = typ * string
@@ -40,6 +52,7 @@ type stmt =
   (* TODO: support return; *)
   | Return of expr
   | FDef of func_def (* Not first class function *)
+  | Delete of string
 
 (* func_def: ret_typ fname formals locals body *)
 (* Mutually recursive data types with stmt: https://v2.ocaml.org/learn/tutorials/data_types_and_matching.html *)
@@ -87,8 +100,8 @@ let rec string_of_expr = function
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | FloatLit(f) -> string_of_float f
-  | StrLit(s) -> String.escaped s
-  | ArrayLit(a) -> 
+  | StrLit(s) -> "\"" ^ String.escaped s ^ "\""
+  | ArrayLit(a) ->  
     let rec string_of_list a = match a with
       [] -> ""
       | [element] -> string_of_expr element
@@ -99,10 +112,16 @@ let rec string_of_expr = function
     string_of_unaop o ^ string_of_expr e
   | Binop(e1, o, e2) ->
     string_of_expr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_expr e2
-  | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | Assign(e1, e2) -> string_of_expr e1 ^ " = " ^ string_of_expr e2
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
+  | New(n) -> string_of_newable n
+  | AccessMember(e1, e2) -> string_of_expr e1 ^ "." ^ string_of_expr e2
+  | AccessEle(e1, e2) -> string_of_expr e1 ^ "[" ^ string_of_expr e2 ^ "]"
   | Noexpr -> ""
+
+and string_of_newable = function
+  | NewStruct(s) -> "new " ^ s
 
 (* let rec string_of_expr_option = function
   | None -> "None" (* Or empty *)
@@ -112,13 +131,14 @@ let rec string_of_stmt_option = function
   | None -> "None" (* Or empty *)
   | Some stmt ->  string_of_stmt stmt *)
 
-let rec string_of_typ = function
+and string_of_typ = function
   Int -> "int"
 | Char -> "char"
 | Bool -> "bool"
 | String -> "String"
 | Array(t) -> "Array<" ^ string_of_typ t ^ ">"
 | Float -> "float"
+| Struct(s) -> "Struct " ^ s;
 | Void -> ""
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
@@ -129,7 +149,7 @@ let string_of_vdecl_list l =
 (* Here, string_of_stmt, string_of_stmt_list, ..., string_of_fdef are all mutually recursive *)
 let rec string_of_stmt = function
     Block(stmts) ->
-    "\n" ^ "{" ^ string_of_stmt_list stmts ^ "}"
+    "\n" ^ "{" ^ string_of_stmt_list stmts ^ "} \n"
   | Expr(expr) -> string_of_expr expr ^ ";"
   | Return(expr) -> "return " ^ string_of_expr expr ^ "; "
   | If(e_s_l,Expr(Noexpr)) -> let string_of_if ((e, s)) =
