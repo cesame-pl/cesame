@@ -128,7 +128,8 @@ let check_vdecl bind_list func_decl_list vdecl =
                   None -> let (rt, ex) = check_expr e bind_list func_decl_list in (if t = rt then ((t,s)::bind_list, SVDecl(t, s, Some (rt,ex))) else raise(Failure(string_of_typ t ^ " does not match " ^ string_of_typ rt)))
 
                   | _ -> raise(Failure("Duplicated definition of "^s^"!\n"))) in 
-  
+(*Input: globals: variables in the parent block;
+         locals : variables that has been added in this block*)
 let rec check_stmt_list globals locals global_func_decls local_func_decls rtyp s = 
 match s with
 [] -> []
