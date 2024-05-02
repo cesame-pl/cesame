@@ -51,6 +51,7 @@ let rec check_expr e bind_list func_decl_list =
   | Noexpr -> (Void, Noexpr)
   | BoolLit l -> (Bool, SBoolLit l)
   | StrLit s  -> (String, SStrLit s)
+  | CharLit c -> (Char, SCharLit c)
   | ArrayLit l -> let rec check_array_helper l prev_typ = (
     match l with
       [] -> prev_typ
