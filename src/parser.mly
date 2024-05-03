@@ -53,7 +53,7 @@ vdecl_list:
 /* int x */
 /* TODO: support int x = 1; */
 vdecl:
-  typ ID { ($1, $2) } (* of type "bind", for function definition and vdecl outside of function *)
+  typ ID { ($1, $2) } /* of type "bind", for function definition and vdecl outside of function */
 
 typ:
     INT   { Int   }
@@ -178,11 +178,11 @@ args:
   | expr COMMA args { $1::$3 }
 
 opt_expr:
-    /*nothing*/ { None }
+  /* nothing */ { None }
   | expr { Some($1) }
 
 opt_loop_init:
-    /*nothing*/ { None } /* for option */
+    /* nothing*/ { None } /* for option */
   | expr { Some(Expr $1) }
-  (* TODO: Can typ ID ASSIGN expr be expressed with some variation of vdecl *)
+  /* TODO: Can typ ID ASSIGN expr be expressed with some variation of vdecl */
   | typ ID ASSIGN expr {  Some(VDecl($1, $2, Some($4))) }
