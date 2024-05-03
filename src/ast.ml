@@ -5,6 +5,9 @@ type binop = Mul | Div | Mod | Add | Sub | Equal | Neq | Ge | Le | Gt | Lt | And
 
 type typ = Int | Char | Bool | Float | String | Array of typ | Void | Struct of string (* for example struct "Shape" *)
 
+(* int x: name binding *)
+type bind = typ * string
+
 type expr =
   Noexpr
   | Literal of int
@@ -31,10 +34,6 @@ and newable =
   (* | NewFunc TODO *)
 (* For new struct object, Student a = new Student {name = "abc", age = 10}, not yet supported *)
 
-
-(* int x: name binding *)
-type bind = typ * string
-
 (* int x; is a bind or a expr (VDecl), but int x = 1; is a statement. *)
 type stmt =
     Block of stmt list
@@ -56,7 +55,7 @@ type stmt =
   | Break
   | Continue
 
-(* func_def: ret_typ fname formals locals body *)
+(* func_def: ret_typ fname params body *)
 (* Mutually recursive data types with stmt: https://v2.ocaml.org/learn/tutorials/data_types_and_matching.html *)
 and func_def = {
   rtyp: typ;
@@ -64,16 +63,6 @@ and func_def = {
   params: bind list;
   body: stmt list;
 }
-
-(* 
-type func_def = {
-  rtyp: typ;
-  fname: string;
-  formals: bind list;
-  locals: bind list;
-  body: stmt list;
-}
-*)
 
 (* type program = bind list * func_def list *)
 type program = stmt list
@@ -113,13 +102,10 @@ let rec string_of_expr = function
       | hd::tl -> (string_of_expr (hd)) ^ ", " ^ (string_of_list (tl)) 
     in "[" ^ string_of_list a ^ "]"
   | Id(s) -> s
-  | Unaop(o, e) ->
-    string_of_unaop o ^ string_of_expr e
-  | Binop(e1, o, e2) ->
-    string_of_expr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_expr e2
+  | Unaop(o, e) -> string_of_unaop o ^ string_of_expr e
+  | Binop(e1, o, e2) -> string_of_expr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_expr e2
   | Assign(e1, e2) -> string_of_expr e1 ^ " = " ^ string_of_expr e2
-  | Call(f, el) ->
-      f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
+  | Call(f, el) -> f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | New(n) -> string_of_newable n
   | AccessMember(e1, e2) -> string_of_expr e1 ^ "." ^ string_of_expr e2
   | AccessEle(e1, e2) -> string_of_expr e1 ^ "[" ^ string_of_expr e2 ^ "]"
@@ -127,14 +113,6 @@ let rec string_of_expr = function
 
 and string_of_newable = function
   | NewStruct(s) -> "new " ^ s
-
-(* let rec string_of_expr_option = function
-  | None -> "None" (* Or empty *)
-  | Some expr -> string_of_expr expr
-
-let rec string_of_stmt_option = function
-  | None -> "None" (* Or empty *)
-  | Some stmt ->  string_of_stmt stmt *)
 
 and string_of_typ = function
   Int -> "int"
@@ -164,25 +142,16 @@ let rec string_of_stmt = function
               string_of_opt_expr e_cond ^ "; " ^ 
               string_of_opt_expr e_trans ^ ") " ^ 
     string_of_stmt(Block(stmt_l))
-  | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
+  | While(e, s) -> "while (" ^ string_of_expr e ^ ") \n" ^ string_of_stmt s
   | VDecl (t, id, opt_expr) ->
     string_of_typ t ^ " " ^ id ^ 
     (match opt_expr with None -> "" | Some(opt) -> " = " ^ string_of_expr opt) ^ ";\n"
   | SDef(s, l)  -> "struct " ^ s ^ "\n{\n" ^ string_of_bind_list l  ^ "}\n"
-  | Delete(s)   -> "delete " ^ s ^ "\n"
+  | Delete(s)   -> "delete " ^ s ^ ";\n"
   | FDef(f)     -> string_of_fdef f
   | Return(e)   -> "return " ^ string_of_expr e ^ ";\n"
   | Break       -> "break;\n"
   | Continue    -> "continue;\n"
-
-
-and string_of_stmt_list l =
-  let stmts = List.map string_of_stmt l in
-  String.concat "" stmts
-
-and string_of_opt_stmt_list = function
-  None -> ""
-  | Some(l) -> string_of_stmt_list l
 
 and string_of_opt_expr = function (* for an optional expr *)
   None -> ""
@@ -191,6 +160,9 @@ and string_of_opt_expr = function (* for an optional expr *)
 and string_of_opt_stmt = function (* for an optional statement *)
   None -> "; "
   | Some(s) -> string_of_stmt s
+
+and string_of_stmt_list l =
+  String.concat "" (List.map string_of_stmt l)
 
 and string_of_fdef fdef =
   string_of_typ fdef.rtyp ^ " " ^

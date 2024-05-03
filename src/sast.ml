@@ -33,17 +33,16 @@ type sstmt =
   | SWhile of sexpr * sstmt
   | SVDecl of typ * string * sexpr option
   | SSDef of string * (typ * string) list
+  | SDelete of string
   (* return *)
   | SReturn of sexpr
   | SFDef of sfunc_def
-  | SDelete of string
 
-(* func_def: ret_typ fname formals locals body *)
+(* func_def: ret_typ fname params body *)
 and sfunc_def = {
   srtyp: typ;
   sfname: string;
   sparams: bind list;
-  (* slocals: bind list; *)
   sbody: sstmt list;
 }
 
@@ -51,26 +50,24 @@ type sprogram = sstmt list
 
 (* Pretty-printing functions *)
 let rec string_of_sexpr (t, e) =
-  "(" ^ string_of_typ t ^ " : " ^ (match e with
+  "(" ^ string_of_typ t ^ " : " ^ 
+    (match e with
         SLiteral(l) -> string_of_int l
-      | SCharLit(c) -> Char.escaped c
+      | SCharLit(c) -> "'" ^ Char.escaped c ^ "'"
       | SBoolLit(true) -> "true"
       | SBoolLit(false) -> "false"
       | SFloatLit(f) -> string_of_float f
-      | SStrLit(s) -> String.escaped s
+      | SStrLit(s) -> "\"" ^ String.escaped s ^ "\""
       | SArrayLit(a) -> let rec string_of_list a = match a with
           [] -> ""
           | [element] -> string_of_sexpr element
-          | hd::tl -> (string_of_sexpr (hd)) ^ "," ^ (string_of_list (tl)) 
+          | hd::tl -> (string_of_sexpr (hd)) ^ ", " ^ (string_of_list (tl)) 
         in "[" ^ string_of_list a ^ "]"
       | SId(s) -> s
-      | SUnaop(o, e) -> 
-        string_of_unaop o ^ string_of_sexpr e
-      | SBinop(e1, o, e2) ->
-        string_of_sexpr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_sexpr e2
+      | SUnaop(o, e) -> string_of_unaop o ^ string_of_sexpr e
+      | SBinop(e1, o, e2) -> string_of_sexpr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_sexpr e2
       | SAssign(e1, e2) -> string_of_sexpr e1 ^ " = " ^ string_of_sexpr e2
-      | SCall(f, el) ->
-          f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
+      | SCall(f, el) -> f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
       | SNew(n) -> string_of_snewable n
       | SAccessMember(e1, e2) -> string_of_sexpr e1 ^ "." ^ string_of_sexpr e2
       | SAccessEle(e1, e2) -> string_of_sexpr e1 ^ "[" ^ string_of_sexpr e2 ^ "]"
@@ -80,40 +77,44 @@ let rec string_of_sexpr (t, e) =
 and string_of_snewable = function
   | SNewStruct(s) -> "new " ^ s
 
-let rec string_of_sstmt = 
-  (function
-    SBlock(stmts) ->
-    "{\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "}\n"
-  | SExpr(expr) -> string_of_sexpr expr ^ ";\n"
-  | SReturn(expr) -> "return " ^ string_of_sexpr expr ^ ";\n"
-  | SIf(l, SExpr(_,Noexpr)) -> let string_of_sif ((e, s)) =
-    "if (" ^ string_of_sexpr e ^ ")\n" ^ (string_of_sstmt s)
-    in String.concat ("el") (List.map string_of_sif (List.rev l))
-  | SIf(l,s) -> let string_of_sif ((e, s)) =
-    "if (" ^ string_of_sexpr e ^ ")\n" ^ (string_of_sstmt s)
-    in String.concat ("el") (List.map string_of_sif (List.rev l)) ^ "else\n" ^ string_of_sstmt s
-  | SFor(s, e1, e2, l) -> "for (" ^ string_of_sstmt_opt s ^ "; " ^ string_of_sexpr_opt e1 ^ "; " ^ string_of_sexpr_opt e2 ^ ")" ^ string_of_sstmt l
-  | SWhile(e, s) -> "while (" ^ string_of_sexpr e ^ ") " ^ string_of_sstmt s
-  | SVDecl(t, s, e) -> string_of_typ t ^ " " ^ s ^ " " ^ (let string_of_expr_option s = match s with None -> "" | Some sexp -> string_of_sexpr sexp in string_of_expr_option e) ^ ";\n"
-  | SSDef(s, l) -> string_of_stmt(SDef(s, l))
-  | SFDef(f) -> string_of_sfdecl f
-  | SDelete(s) -> "delete " ^ s
-  )
-and string_of_sstmt_opt = function
-  Some sstmt -> string_of_sstmt sstmt
-| None -> ""
-and string_of_sexpr_opt = function
-  Some sexpr -> string_of_sexpr sexpr
-| None -> ""
-and string_of_sfdecl fdecl =
-  string_of_typ fdecl.srtyp ^ " " ^
-  fdecl.sfname ^ "(" ^ String.concat ", " (List.map snd fdecl.sparams) ^
-  ")\n{\n" ^
-  (* String.concat "" (List.map string_of_vdecl fdecl.slocals) ^ *)
-  String.concat "" (List.map string_of_sstmt fdecl.sbody) ^
-  "}\n"
+let rec string_of_sstmt = function
+    SBlock(sstmts) -> "{\n" ^ string_of_sstmt_list sstmts ^ "}\n"
+  | SExpr(e)       -> string_of_sexpr e ^ ";\n"
+  | SIf(l, s)      -> 
+    let string_of_sif (e, s) = "if (" ^ string_of_sexpr e ^ ")\n" ^ string_of_sstmt s in 
+      String.concat "el" (List.map string_of_sif (List.rev l)) ^
+      (match s with SExpr(_, Noexpr) -> "" | _ -> "else\n" ^ string_of_sstmt s)
+  | SFor(stmt_init, e_cond, e_trans, stmt_l) -> 
+    "for (" ^ remove_last (string_of_opt_sstmt stmt_init) ^ " " ^ 
+              string_of_opt_sexpr e_cond ^ "; " ^ 
+              string_of_opt_sexpr e_trans ^ ")" ^ 
+    string_of_sstmt stmt_l
+  | SWhile(e, s)   -> "while (" ^ string_of_sexpr e ^ ") \n" ^ string_of_sstmt s
+  | SVDecl(t, id, opt_expr) -> 
+    string_of_typ t ^ " " ^ id ^
+    (match opt_expr with None -> "" | Some(opt) -> " = " ^ string_of_sexpr opt) ^ ";\n"
+  | SSDef(s, l)    -> string_of_stmt(SDef(s, l))
+  | SDelete(s)     -> string_of_stmt(Delete(s))
+  | SFDef(f)       -> string_of_sfdef f
+  | SReturn(e)     -> "return " ^ string_of_sexpr e ^ ";\n"
+
+and string_of_opt_sexpr = function
+  None -> ""
+  | Some sexpr -> string_of_sexpr sexpr
+
+and string_of_opt_sstmt = function
+  None -> "; "
+  | Some(s) -> string_of_sstmt s
+
+and string_of_sstmt_list l =
+  String.concat "" (List.map string_of_sstmt l)
+
+and string_of_sfdef fdef =
+  string_of_typ fdef.srtyp ^ " " ^
+  fdef.sfname ^ "(" ^ String.concat ", " (List.map snd fdef.sparams) ^ ")\n" ^ 
+  string_of_sstmt(SBlock(fdef.sbody))
 
 let string_of_sprogram sstmts =
   "\n\nSementically checked program: \n\n" ^
-  String.concat "" (List.map string_of_sstmt sstmts)
+  string_of_sstmt_list sstmts
   
