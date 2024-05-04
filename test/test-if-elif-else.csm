@@ -3,6 +3,7 @@ int main() {
   int y;
   x = 1;
   y = 2;
+  bool b = false;
 
   /* You can do if (elif)+ (else)* */
 
@@ -22,7 +23,7 @@ int main() {
     y = 0;
   }
   
-  if (x == 1) {
+  if (!b) {
     y = 3;
   }
 

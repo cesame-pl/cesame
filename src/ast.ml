@@ -14,9 +14,9 @@ type expr =
   | CharLit of char
   | BoolLit of bool
   | FloatLit of float
-  | Id of string (* These are constructors; We can use Id(some_string) to construction a expr *)
   | StrLit of string
   | ArrayLit of expr list
+  | Id of string (* These are constructors; We can use Id(some_string) to construction a expr *)
   | Unaop of unaop * expr
   | Binop of expr * binop * expr
   | Assign of expr * expr

@@ -9,9 +9,9 @@ and sx =
   | SCharLit of char
   | SBoolLit of bool
   | SFloatLit of float
-  | SId of string
   | SStrLit of string
   | SArrayLit of sexpr list
+  | SId of string
   | SUnaop of unaop * sexpr
   | SBinop of sexpr * binop * sexpr
   | SAssign of sexpr * sexpr

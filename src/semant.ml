@@ -54,26 +54,26 @@ let rec check_expr e bind_list func_decl_list =
   match e with
   | Literal l -> (Int, SLiteral l)
   | Noexpr -> (Void, Noexpr)
+  | CharLit c -> (Char, SCharLit c)
   | BoolLit l -> (Bool, SBoolLit l)
   | StrLit s  -> (String, SStrLit s)
-  | CharLit c -> (Char, SCharLit c)
   | ArrayLit l -> 
     let rec check_array_helper l prev_typ =
       match l with
       | [] -> prev_typ
       | [e] -> (
         if (prev_typ = fst (check_expr e bind_list func_decl_list)) then prev_typ
-        else raise (Failure ("Array type " ^ (string_of_typ prev_typ) ^ "inconsistent with type " ^ (string_of_typ (fst (check_expr e bind_list func_decl_list)))))
+        else raise (Failure ("Array type " ^ (string_of_typ prev_typ) ^ " inconsistent with type " ^ (string_of_typ (fst (check_expr e bind_list func_decl_list)))))
       )
-      | hd::tl -> (
+      | hd :: tl -> (
         if (prev_typ = fst (check_expr hd bind_list func_decl_list)) then (check_array_helper tl prev_typ)
-        else raise (Failure ("Array type " ^ (string_of_typ prev_typ) ^ "inconsistent with type " ^ (string_of_typ (fst (check_expr hd bind_list func_decl_list)))))
+        else raise (Failure ("Array type " ^ (string_of_typ prev_typ) ^ " inconsistent with type " ^ (string_of_typ (fst (check_expr hd bind_list func_decl_list)))))
       )
     in 
     let check_array l = 
       match l with 
       | [] -> (Array(Void), SArrayLit [])
-      | hd::tl -> (Array(check_array_helper l (fst (check_expr hd bind_list func_decl_list))), SArrayLit (List.map (fun x -> check_expr x bind_list func_decl_list) l))
+      | hd :: tl -> (Array(check_array_helper l (fst (check_expr hd bind_list func_decl_list))), SArrayLit (List.map (fun x -> check_expr x bind_list func_decl_list) l))
     in 
     check_array l
   | Id var -> (type_of_identifier var symbols, SId var)
@@ -84,6 +84,9 @@ let rec check_expr e bind_list func_decl_list =
     let err = "Illegal assignment " ^ string_of_typ lt ^ " = " ^
               string_of_typ rt ^ " in " ^ string_of_expr ex in
     (check_assign lt rt err, SAssign((lt, e1), (rt, e2)))
+  | Unaop(op, e) as ex ->
+    (match op with 
+    | Not -> check_bool_expr e bind_list func_decl_list)
   | Binop(e1, op, e2) as e ->
     let (t1, e1') = check_expr e1 bind_list func_decl_list
     and (t2, e2') = check_expr e2 bind_list func_decl_list in
@@ -91,7 +94,7 @@ let rec check_expr e bind_list func_decl_list =
               string_of_typ t1 ^ " " ^ string_of_binop op ^ " " ^
               string_of_typ t2 ^ " in " ^ string_of_expr e 
     in
-    (* All binary operators require operands of the same type*)
+    (* All binary operators require operands of the same type *)
     if t1 = t2 then
       (* Determine expression type based on operator and operand types *)
       let t = match op with
@@ -119,9 +122,10 @@ let rec check_expr e bind_list func_decl_list =
     in
     let args' = List.map2 check_call fd.params args in
     (fd.rtyp, SCall(fname, args')) 
+  | _ -> (Int, SLiteral 1)
 
 (* Function to check if an expression is boolean *)
-let check_bool_expr e bind_list function_list = 
+and check_bool_expr e bind_list function_list = 
   let (t, e') = check_expr e bind_list function_list in
   match t with
   | Bool -> (t, e')

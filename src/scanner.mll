@@ -69,14 +69,14 @@ rule token = parse
 | "->"     { ARROW }
 | "new"    { NEW }
 | "delete" { DELETE }
-(* ID *)
-| uletter (digit | letter | '_')* as lem { STRUCTID(lem) }
-| lletter (digit | letter | '_')* as lem { ID(lem) }
 (* Literals *)
 | "true"   { BLIT(true)  }
 | "false"  { BLIT(false) }
 | int as lem  { LITERAL(int_of_string lem) }
 | float as lem { FLIT(float_of_string lem) }
+(* ID *)
+| uletter (digit | letter | '_')* as lem { STRUCTID(lem) }
+| lletter (digit | letter | '_')* as lem { ID(lem) }
 (* dots that are not in between numbers are parsed just as a single dot*)
 | "."      { DOT }
 | squote _ squote as lem { CLIT(lem.[1]) }
