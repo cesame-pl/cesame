@@ -57,6 +57,7 @@ let rec check_expr e bind_list func_decl_list =
   | CharLit c -> (Char, SCharLit c)
   | BoolLit l -> (Bool, SBoolLit l)
   | StrLit s  -> (String, SStrLit s)
+  | FloatLit f -> (Float, SFloatLit f)
   | ArrayLit l -> 
     let rec check_array_helper l prev_typ =
       match l with
@@ -77,13 +78,6 @@ let rec check_expr e bind_list func_decl_list =
     in 
     check_array l
   | Id var -> (type_of_identifier var symbols, SId var)
-  | Assign(e1, e2) as ex ->
-    (* lt: left type, rt: right type *)
-    let (lt, e1) = check_expr e1 bind_list func_decl_list
-    and (rt, e2) = check_expr e2 bind_list func_decl_list in
-    let err = "Illegal assignment " ^ string_of_typ lt ^ " = " ^
-              string_of_typ rt ^ " in " ^ string_of_expr ex in
-    (check_assign lt rt err, SAssign((lt, e1), (rt, e2)))
   | Unaop(op, e)->
     (match op with 
     | Not -> check_bool_expr e bind_list func_decl_list)
@@ -98,7 +92,7 @@ let rec check_expr e bind_list func_decl_list =
     if t1 = t2 then
       (* Determine expression type based on operator and operand types *)
       let t = match op with
-          Add | Sub when t1 = Int -> Int
+        | Mul | Div | Mod | Add | Sub when t1 = Int -> Int
         | Equal | Neq -> Bool
         | Lt when t1 = Int -> Bool
         | Gt when t1 = Int -> Bool
@@ -107,6 +101,13 @@ let rec check_expr e bind_list func_decl_list =
       in
       (t, SBinop((t1, e1'), op, (t2, e2')))
     else raise (Failure err)
+  | Assign(e1, e2) as ex ->
+    (* lt: left type, rt: right type *)
+    let (lt, e1) = check_expr e1 bind_list func_decl_list
+    and (rt, e2) = check_expr e2 bind_list func_decl_list in
+    let err = "Illegal assignment " ^ string_of_typ lt ^ " = " ^
+              string_of_typ rt ^ " in " ^ string_of_expr ex in
+    (check_assign lt rt err, SAssign((lt, e1), (rt, e2)))
   | Call(fname, args) as call ->
     let fd = find_func fname func_map in
     let param_length = List.length fd.params in
@@ -121,8 +122,15 @@ let rec check_expr e bind_list func_decl_list =
         (check_assign ft et err, e')
     in
     let args' = List.map2 check_call fd.params args in
-    (fd.rtyp, SCall(fname, args')) 
-  | _ -> raise (Failure ("TODO:\n" ^ string_of_expr e))
+    (fd.rtyp, SCall(fname, args'))
+  | AccessEle(e1, e2) -> (* TODO: out of bound *)
+    let se1 = check_expr e1 bind_list func_decl_list
+    and se2 = check_expr e2 bind_list func_decl_list in 
+    match fst se1, fst se2 with 
+    | Array t, Int -> (t, SAccessMember(se1, se2))
+    | Array _, _ -> raise (Failure "Index must be an integer value.")
+    | _ -> raise (Failure("Cannot apply the operator '[]' to " ^ string_of_expr e1))
+  | _ -> raise (Failure("TODO:\n" ^ string_of_expr e))
 
 (* Function to check if an expression is boolean *)
 and check_bool_expr e bind_list function_list = 
@@ -183,57 +191,6 @@ and check_stmt globals locals global_func_decls local_func_decls rtyp stmt =
   | Expr e -> 
     let sexpr = check_expr e vars func_decls in 
     (locals, local_func_decls, SExpr(sexpr))
-  (* A VDecl is valid if 
-    - no duplicate local var decl *)
-  | VDecl(t, s, eop) -> 
-    let (new_locals, svdec) = check_vdecl globals locals func_decls (t, s, eop) in 
-    (new_locals, local_func_decls, svdec)
-  | While (e, s) -> 
-    let (_, _, sstmts) = check_stmt globals locals global_func_decls local_func_decls rtyp s in 
-    let swhile = SWhile(check_bool_expr e vars func_decls, sstmts) in 
-    (locals, local_func_decls, swhile)
-  | Return e ->
-    let (t, e') = check_expr e vars func_decls in
-    if t = rtyp then
-      (locals, local_func_decls, SReturn (t, e'))
-    else
-      raise (Failure ("Return gives " ^ string_of_typ t ^
-                      " expected " ^ string_of_typ rtyp ^ " in " ^ string_of_expr e))
-  (* A FDef is valid if 
-    - no duplicate function name (check_fname)
-    - no duplicate params (check_param)
-    - body stmt list is valid *)
-  | FDef(f) ->
-    (* check whether there are duplicate params *)
-    let check_param bind_list p =
-      let p_map = make_symbol_map bind_list in
-      match StringMap.find_opt (snd p) p_map with
-      | None -> p :: bind_list
-      | Some n -> raise (Failure("Duplicated bind of " ^ (snd p) ^ " in function " ^ f.fname))
-    in
-    let rec check_params bind_list pl =
-      match pl with
-      | [] -> []
-      | p :: pl -> let new_bind_list = check_param bind_list p in p :: check_params new_bind_list pl
-    in
-    let sbinds = check_params [] f.params in
-    (* check whether there are dupilcate function names *)
-    let check_fname name =
-      let f_map = make_func_map (global_func_decls @ local_func_decls) in
-      match StringMap.find_opt name f_map with
-      | Some f -> raise (Failure("Duplicated function name " ^ name ^ " not supported"))
-      | None -> name 
-    in
-    let sname = check_fname f.fname in
-    (* check the statements
-      Inputs:
-      - globals: globals @ locals
-      - locals: params
-      - global_func_decls: global_func_decls @ local_func_decls
-      - local_func_decls: <itself> *)
-    let sstmts = check_stmt_list vars sbinds func_decls [f] f.rtyp f.body in
-    let sfdef = SFDef({srtyp = f.rtyp; sfname = sname; sparams = f.params; sbody = sstmts}) in
-    (locals, f::local_func_decls, sfdef)
   (* An If is valid if
     - bool expression in expr list
     - stmts are valid *)
@@ -270,6 +227,57 @@ and check_stmt globals locals global_func_decls local_func_decls rtyp stmt =
     let (_, _, ss_l) = 
       check_stmt (vars @ new_locals) [] func_decls [] rtyp (Block(stmt_l)) in 
     (locals, local_func_decls, SFor(s_init_stmt, s_end_cond, s_trans_e, ss_l))
+  | While (e, s) -> 
+    let (_, _, sstmts) = check_stmt globals locals global_func_decls local_func_decls rtyp s in 
+    let swhile = SWhile(check_bool_expr e vars func_decls, sstmts) in 
+    (locals, local_func_decls, swhile)
+  (* A VDecl is valid if 
+    - no duplicate local var decl *)
+  | VDecl(t, s, eop) -> 
+    let (new_locals, svdec) = check_vdecl globals locals func_decls (t, s, eop) in 
+    (new_locals, local_func_decls, svdec)
+  (* A FDef is valid if 
+    - no duplicate function name (check_fname)
+    - no duplicate params (check_param)
+    - body stmt list is valid *)
+  | FDef(f) ->
+    (* check whether there are duplicate params *)
+    let check_param bind_list p =
+      let p_map = make_symbol_map bind_list in
+      match StringMap.find_opt (snd p) p_map with
+      | None -> p :: bind_list
+      | Some n -> raise (Failure("Duplicated bind of " ^ (snd p) ^ " in function " ^ f.fname))
+    in
+    let rec check_params bind_list pl =
+      match pl with
+      | [] -> []
+      | p :: pl -> let new_bind_list = check_param bind_list p in p :: check_params new_bind_list pl
+    in
+    let sbinds = check_params [] f.params in
+    (* check whether there are dupilcate function names *)
+    let check_fname name =
+      let f_map = make_func_map (global_func_decls @ local_func_decls) in
+      match StringMap.find_opt name f_map with
+      | Some f -> raise (Failure("Duplicated function name " ^ name ^ " not supported"))
+      | None -> name 
+    in
+    let sname = check_fname f.fname in
+    (* check the statements
+      Inputs:
+      - globals: globals @ locals
+      - locals: params
+      - global_func_decls: global_func_decls @ local_func_decls
+      - local_func_decls: <itself> *)
+    let sstmts = check_stmt_list vars sbinds func_decls [f] f.rtyp f.body in
+    let sfdef = SFDef({srtyp = f.rtyp; sfname = sname; sparams = f.params; sbody = sstmts}) in
+    (locals, f::local_func_decls, sfdef)
+  | Return e ->
+    let (t, e') = check_expr e vars func_decls in
+    if t = rtyp then
+      (locals, local_func_decls, SReturn (t, e'))
+    else
+      raise (Failure ("Return gives " ^ string_of_typ t ^
+                      " expected " ^ string_of_typ rtyp ^ " in " ^ string_of_expr e))
   | _ -> raise (Failure ("TODO:\n" ^ string_of_stmt stmt))
 
 (* Entry point for the semantic checker *)
