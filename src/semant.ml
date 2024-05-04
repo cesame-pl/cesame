@@ -84,7 +84,7 @@ let rec check_expr e bind_list func_decl_list =
     let err = "Illegal assignment " ^ string_of_typ lt ^ " = " ^
               string_of_typ rt ^ " in " ^ string_of_expr ex in
     (check_assign lt rt err, SAssign((lt, e1), (rt, e2)))
-  | Unaop(op, e) as ex ->
+  | Unaop(op, e)->
     (match op with 
     | Not -> check_bool_expr e bind_list func_decl_list)
   | Binop(e1, op, e2) as e ->
@@ -122,7 +122,7 @@ let rec check_expr e bind_list func_decl_list =
     in
     let args' = List.map2 check_call fd.params args in
     (fd.rtyp, SCall(fname, args')) 
-  | _ -> (Int, SLiteral 1)
+  | _ -> raise (Failure ("TODO:\n" ^ string_of_expr e))
 
 (* Function to check if an expression is boolean *)
 and check_bool_expr e bind_list function_list = 
@@ -270,6 +270,7 @@ and check_stmt globals locals global_func_decls local_func_decls rtyp stmt =
     let (_, _, ss_l) = 
       check_stmt (vars @ new_locals) [] func_decls [] rtyp (Block(stmt_l)) in 
     (locals, local_func_decls, SFor(s_init_stmt, s_end_cond, s_trans_e, ss_l))
+  | _ -> raise (Failure ("TODO:\n" ^ string_of_stmt stmt))
 
 (* Entry point for the semantic checker *)
 let check stmts = check_stmt_list [] [] [] [] Int stmts
