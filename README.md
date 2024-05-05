@@ -13,16 +13,23 @@ Cesame: A C-like programming language that features native support for first-cla
 
 ## Testing
 ```
-cd ./src
 make
 
 # To print out ast
-./cesame -a ../test/example.csm
-./cesame -a ../test/hello-world.csm
+./cesame -a ./test/example.csm
+./cesame -a ./test/hello-world.csm
 
 # To print out sast
-./cesame -s ../test/example.csm
-./cesame -s ../test/hello-world.csm
+./cesame -s ./test/example.csm
+./cesame -s ./test/hello-world.csm
+
+# To print out the generated LLVM IR
+./cesame -l ./test/example.csm
+./cesame -l ./test/hello-world.csm
+
+# To check and print out the generated LLVM IR (default)
+./cesame -c ./test/example.csm
+./cesame -c ./test/hello-world.csm
 ```
 
 
