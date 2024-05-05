@@ -46,6 +46,7 @@ type stmt =
   | While of expr * stmt
   (* int a; or int a = 1 + 2; the expression is optional *)
   | VDecl of typ * string * expr option
+  (* Struct *)
   | SDef of string * bind list 
   | Delete of string
   (* TODO: support return; *)

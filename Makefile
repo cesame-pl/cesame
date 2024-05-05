@@ -13,7 +13,7 @@ all : clean cesame test
 .PHONY : cesame
 cesame : 
 	make -C $(SRC_DIR) cesame
-	cp $(SRC_DIR)/cesame cesame
+	mv $(SRC_DIR)/cesame cesame
 
 .PHONY : clean
 clean :

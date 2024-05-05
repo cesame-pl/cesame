@@ -5,6 +5,12 @@ open Sast
 
 module StringMap = Map.Make(String)
 
+(* Help function to create a struct map. *)
+(* struct def is a string name and a (typ * string) list *)
+let make_struct_map struct_decls_list = 
+  let add_struct map sd =
+    let dup_err = "Duplicate struct " ^ sd
+
 (* Helper function to create a function map *)
 let make_func_map func_decls_list =
   let built_in_decls = StringMap.add "print" {
@@ -177,7 +183,7 @@ let rec check_stmt_list globals locals global_func_decls local_func_decls rtyp s
     - new local func decls
     - semantically validated sstmt
     (globals are not required since the statement does not modify global variables.) *)
-and check_stmt globals locals global_func_decls local_func_decls rtyp stmt =
+and check_stmt globals locals global_func_decls local_func_decls struct_decls rtyp stmt =
   (* vars: all variables; func_decls: all functions declarations *)
   let vars = globals @ locals and func_decls = global_func_decls @ local_func_decls in 
   
@@ -278,6 +284,7 @@ and check_stmt globals locals global_func_decls local_func_decls rtyp stmt =
     else
       raise (Failure ("Return gives " ^ string_of_typ t ^
                       " expected " ^ string_of_typ rtyp ^ " in " ^ string_of_expr e))
+  | SDef(n, bl)
   | _ -> raise (Failure ("TODO:\n" ^ string_of_stmt stmt))
 
 (* Entry point for the semantic checker *)
