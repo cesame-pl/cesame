@@ -1,0 +1,19 @@
+int a;
+int main() {
+        int a;
+        for (int a = 0; a < 10; a = a + 1) {
+                String a;
+                {
+                        char a;
+                }
+        }
+        while (a > 0) {
+                if (a > 0) {
+                        int b = a;
+                        char a;
+                        a = 'a';
+                        return b;
+                }
+        }
+        return a;
+}

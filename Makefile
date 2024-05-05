@@ -1,52 +1,36 @@
-all : clean cesame  # Automatically clean first "rm -f *.cmi *.cmo"
- 
-cesame :parser.cmo scanner.cmo ast.cmo sast.cmo semant.cmo cesame.cmo
-	ocamlc -w A -o cesame $^
-	rm -f *.cmi *.cmo
+# Define directories
+SRC_DIR = src
+TEST_DIR = test
+OUT_DIR = $(TEST_DIR)/output
 
-%.cmo : ./src/%.ml
-	ocamlc -w A -c $< -o $@
+# Define flags
+FLAGS = -a -s -l
 
-%.cmi : ./src/%.mli
-	ocamlc -w A -c $< -o $@
+# Build targets
+.PHONY : all
+all : clean cesame test
 
-./src/scanner.ml : ./src/scanner.mll
-	ocamllex $^
-
-./src/parser.ml ./src/parser.mli : ./src/parser.mly
-	ocamlyacc $^
-
-./src/ast.mli : ./src/ast.ml
-	ocamlc -i $^ > ./src/ast.mli
-
-# Depedencies from ocamldep
-cesame.cmo : \
-    semant.cmo \
-    sast.cmo \
-    ast.cmo
-cesame.cmx : \
-    semant.cmx \
-    sast.cmx \
-    ast.cmx
-sast.cmo : \
-    ast.cmo
-sast.cmx : \
-    ast.cmx
-semant.cmo : \
-    sast.cmo \
-    ast.cmo
-semant.cmx : \
-    sast.cmx \
-    ast.cmx
-parser.cmo : ast.cmi parser.cmi
-parser.cmx : ast.cmi parser.cmi
-scanner.cmo : parser.cmi
-scanner.cmx : parser.cmx
-
-
-##############################
+.PHONY : cesame
+cesame : 
+	make -C $(SRC_DIR) cesame
+	cp $(SRC_DIR)/cesame cesame
 
 .PHONY : clean
 clean :
-	rm -rf ./src/*.mli ./src/*.cmi ./src/*.cmo *.cmi *.cmo \
-    ./src/parser.ml ./src/parser.mli ./src/scanner.ml cesame
+	make -C $(SRC_DIR) clean
+	rm -f cesame
+	rm -rf $(OUT_DIR)*  # Remove output directories and files
+
+# Test different flags and files
+.PHONY: test
+test:
+	@$(foreach flag,$(FLAGS), \
+		mkdir -p $(OUT_DIR)$(flag); \
+		$(foreach file,$(wildcard $(TEST_DIR)/*.csm), \
+			./cesame $(flag) $(file) > $(OUT_DIR)$(flag)/$(notdir $(basename $(file))).out 2> $(OUT_DIR)$(flag)/$(notdir $(basename $(file))).err || true; \
+		) \
+	) > /dev/null
+
+	@$(foreach flag,$(FLAGS), \
+		find $(OUT_DIR)$(flag) -type f -empty -delete; \
+	) > /dev/null
