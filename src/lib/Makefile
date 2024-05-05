@@ -5,4 +5,4 @@ printbig : printbig.c
 
 .PHONY : clean
 clean :
-	rm -f printbig
+	rm -f printbig printbig.o
