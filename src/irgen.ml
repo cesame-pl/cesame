@@ -40,31 +40,29 @@ let translate (program: sstmt list) : Llvm.llmodule =
   let printbig_func : L.llvalue =
     L.declare_function "printbig" printbig_t the_module in
 
-  let rec build_expr builder ((_, e) : sexpr) = function
-    | SLiteral(i)         -> L.const_int i32_t i
+  let rec build_expr builder ((_, e) : sexpr) = match e with
+     SLiteral(i)         -> L.const_int i32_t i
     | SFloatLit(f)        -> L.const_float f64_t f
-    | SCall ("print", [e])
+    | SCall ("print", [e]) 
     | SCall ("printb", [e]) ->
 	    L.build_call printf_func [| int_format_str builder; (build_expr builder e) |]
 	    "printf" builder
     | SCall ("printbig", [e]) ->
 	    L.build_call printbig_func [| (build_expr builder e) |] "printbig" builder
     | SCall ("printf", [e]) -> 
-	    L.build_call printf_func [| float_format_str ; (build_expr builder e) |]
+	    L.build_call printf_func [| float_format_str builder; (build_expr builder e) |]
 	    "printf" builder
   in
 
   let build_stmt builder = function
-    | SExpr(se) -> build_expr builder se
+    SExpr(se) -> build_expr builder se
   in
-
-
-  let build_stmt_list builder = (* sl is the last param *)
+  let rec build_stmt_list builder = (* sl is the last param *)
   function
-    | [] -> builder
+    [] -> builder
     | s :: sl -> 
-    let b = build_stmt builder in
-    build_stmt_list b sl
+    ignore(build_stmt builder s);
+    build_stmt_list builder sl
   in
 
   
