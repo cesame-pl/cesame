@@ -2,11 +2,18 @@ module L = Llvm
 module A = Ast
 open Sast 
 
-open Hashtbl
+module StringMap = Map.Make(String)
 
 (* C Array v.s. Java Array; C char* v.s. Java String *)
 
-type string2addr_t = (string, L.llvalue) Hashtbl.t
+(* When we enter a new scope, we combine the globals and locals to pass in as the globals of the new scope. *)
+(* iterate over locals and insert its key-value pairs into the globals, to return *)
+let combine_maps globals locals =
+  let combined_map = ref globals in
+  StringMap.iter (fun key value ->
+    combined_map := StringMap.add key value !combined_map
+  ) locals;
+  !combined_map
 
 let translate (program: sstmt list) : Llvm.llmodule = 
   
@@ -53,10 +60,11 @@ let translate (program: sstmt list) : Llvm.llmodule =
 
   (* Helper function to look up variable from both the global and the local list of variable (local first) *)
   let var_addr_lookup globals locals var_name: L.llvalue = 
-    try Hashtbl.find locals var_name
-      with Not_found -> Hashtbl.find globals var_name
+    try StringMap.find var_name locals
+      with Not_found -> StringMap.find var_name globals
   in
 
+  (* Takes in an sexpr *)
   let rec build_expr globals locals builder ((_, e) : sexpr) = match e with
      SLiteral(i)         -> L.const_int i32_t i
     | SFloatLit(f)        -> L.const_float f64_t f
@@ -84,9 +92,10 @@ let translate (program: sstmt list) : Llvm.llmodule =
       let e2_val = build_expr builder e2 in
       () *)
   in
-
+  
+  (* build_stmt returns (new_locals, new_func_decls, builder) *)
   let rec build_stmt globals locals builder = function
-    SExpr(se) -> ignore(build_expr globals locals builder se); builder
+    SExpr(se) -> ignore(build_expr globals locals builder se); (locals, builder)
     (* If it's a declaration, insert it into the locals. The bind is the first element of locals *)
     (* Why do we need local_func_decls here? *)
     (* TODO: If t is a Func type? *)
@@ -94,24 +103,25 @@ let translate (program: sstmt list) : Llvm.llmodule =
       let lhs_addr = match t with
         (* TODO: ADD functions *)
         | _ -> L.build_alloca (ltype_of_typ t) var_name builder
-      in ignore (Hashtbl.add locals var_name lhs_addr); (* Add var_name -> var_addr to the map *)
-      builder
+      in
+      let new_locals = StringMap.add var_name lhs_addr locals (* Add var_name -> var_addr to the map *)
+      in (new_locals, builder)
     | SVDecl (t, var_name, Some (rt, re)) -> (* right type and right expression *)
       let lhs_addr = match t with
         (* TODO: ADD functions *)
         | _ -> L.build_alloca (ltype_of_typ t) var_name builder
-      in ignore(Hashtbl.add locals var_name lhs_addr); (* The semicolon is crucial here! *) (* Add var_name -> var_addr to the map *)
-      let e' = build_expr globals locals builder (rt, re) (* Because of the semicolon, we don't need "in" here *)
+      in let new_locals = StringMap.add var_name lhs_addr locals (* Add var_name -> var_addr to the map *)
+      in let e' = build_expr globals locals builder (rt, re)
       in ignore(L.build_store e' lhs_addr builder);
-      builder
+      (new_locals, builder)
   in
 
   let rec build_stmt_list globals locals builder = (* sl is the last param *)
   function
     [] -> builder
     | s :: sl -> 
-    ignore(build_stmt globals locals builder s);
-    build_stmt_list globals locals builder sl
+    let (new_locals, _) = build_stmt globals locals builder s
+    in build_stmt_list globals new_locals builder sl
   in
 
   
@@ -126,8 +136,8 @@ let translate (program: sstmt list) : Llvm.llmodule =
   (* Variable map is a map from var name to var's addr (llvalue) *)
   (* We can use hashmap instead of StringMap for ease of mind *)
   (* Globals are vars outside of the current scope. Locals are inside the current scope *)
-  let (globals : string2addr_t) = Hashtbl.create 500 in
-  let (locals : string2addr_t) = Hashtbl.create 500 in
+  let globals = StringMap.empty in
+  let locals = StringMap.empty in
 
   let main = L.define_function "main" (L.function_type i32_t [||]) the_module in
   let builder = L.builder_at_end context (L.entry_block main) in
