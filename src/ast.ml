@@ -1,7 +1,7 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
 type unaop = Not
-type binop = Mul | Div | Mod | Add | Sub | Equal | Neq | Ge | Le | Gt | Lt | And | Or
+type binop = Add | Sub | Mul | Div | Mod | Equal | Neq | Ge | Le | Gt | Lt | And | Or
 
 type typ = Int | Char | Bool | Float | String | Array of typ | Void | Struct of string (* for example struct "Shape" *)
 
@@ -74,11 +74,11 @@ let remove_last s =
 let string_of_unaop = function
     Not -> "!"
 let string_of_binop = function
-    Mul -> "*"
+    Add -> "+"
+  | Sub -> "-"
+  | Mul -> "*"
   | Div -> "/"
   | Mod -> "%"
-  | Add -> "+"
-  | Sub -> "-"
   | Ge -> ">="
   | Le -> "<="
   | Gt -> ">"

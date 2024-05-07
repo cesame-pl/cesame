@@ -1,6 +1,7 @@
 module L = Llvm
 module A = Ast
 open Sast 
+open Ast
 
 module StringMap = Map.Make(String)
 
@@ -65,7 +66,8 @@ let translate (program: sstmt list) : Llvm.llmodule =
   in
 
   (* Takes in an sexpr *)
-  let rec build_expr globals locals builder ((_, e) : sexpr) = match e with
+  let rec build_expr globals locals builder ((_, e) : sexpr) : L.llvalue = 
+    match e with
      SLiteral(i)         -> L.const_int i32_t i
     | SFloatLit(f)        -> L.const_float f64_t f
     | SBoolLit (b)  -> L.const_int bool_t (if b then 1 else 0)
@@ -86,11 +88,58 @@ let translate (program: sstmt list) : Llvm.llmodule =
     | SCall ("printf", [e]) -> 
 	    L.build_call printf_func [| float_format_str builder; (build_expr globals locals builder e) |]
 	    "printf" builder
-    (* TODO: Binop *)
-    (* | SBinop (e1, op, e2) ->
-      let e1_val = build_expr builder e1 in
-      let e2_val = build_expr builder e2 in
-      () *)
+    | SUnaop (op, e) ->
+      let e' = build_expr globals locals builder e in 
+      (match op with 
+      A.Not -> L.build_not e' "tmp" builder)
+    | SBinop (e1, op, e2) ->
+      (* check if e1 and e2 are valid in semant *)
+      (* print_string (string_of_sexpr((t,  SBinop(e1, op, e2)))); *)
+      let e1' = build_expr globals locals builder e1 in
+      let e2' = build_expr globals locals builder e2 in
+      let err = "Unsupported binary operation for this type" in
+      let (e1_t, _) = e1 in
+      (match e1_t with
+      | A.Bool -> 
+        (match op with 
+        A.And -> L.build_and
+        | A.Or -> L.build_or
+        | A.Equal -> L.build_icmp L.Icmp.Eq
+        | A.Neq -> L.build_icmp L.Icmp.Ne
+        | A.Ge -> L.build_icmp L.Icmp.Sge
+        | A.Le -> L.build_icmp L.Icmp.Sle
+        | A.Gt -> L.build_icmp L.Icmp.Sgt
+        | A.Lt -> L.build_icmp L.Icmp.Slt)
+      | A.Int ->
+        (match op with 
+        A.And -> L.build_and
+        | A.Or -> L.build_or
+        | A.Add -> L.build_add
+        | A.Sub -> L.build_sub 
+        | A.Mul -> L.build_mul
+        | A.Div -> L.build_sdiv (* signed division *)
+        | A.Mod -> L.build_srem (* signed remainder *)
+        | A.Equal -> L.build_icmp L.Icmp.Eq
+        | A.Neq -> L.build_icmp L.Icmp.Ne
+        | A.Ge -> L.build_icmp L.Icmp.Sge
+        | A.Le -> L.build_icmp L.Icmp.Sle
+        | A.Gt -> L.build_icmp L.Icmp.Sgt
+        | A.Lt -> L.build_icmp L.Icmp.Slt)
+      | A.Float -> 
+        (match op with
+        A.And -> L.build_and
+        | A.Or -> L.build_or
+        | A.Add -> L.build_fadd
+        | A.Sub -> L.build_fsub 
+        | A.Mul -> L.build_fmul
+        | A.Div -> L.build_fdiv
+        | A.Equal -> L.build_fcmp L.Fcmp.Oeq
+        | A.Neq -> L.build_fcmp L.Fcmp.One
+        | A.Ge -> L.build_fcmp L.Fcmp.Oge
+        | A.Le -> L.build_fcmp L.Fcmp.Ole
+        | A.Gt -> L.build_fcmp L.Fcmp.Ogt
+        | A.Lt -> L.build_fcmp L.Fcmp.Olt) 
+      |_ -> raise (Failure err)) e1' e2' "tmp" builder
   in
   
   (* build_stmt returns (new_locals, new_func_decls, builder) *)
