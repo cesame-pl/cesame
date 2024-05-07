@@ -1,5 +1,6 @@
 # Define directories
 SRC_DIR = src
+LIB_DIR = src/lib
 TEST_DIR = test
 OUT_DIR = $(TEST_DIR)/output
 
@@ -12,11 +13,13 @@ all : clean cesame test
 
 .PHONY : cesame
 cesame : 
+	make -C $(LIB_DIR) printbig.o
 	make -C $(SRC_DIR) cesame
 	mv $(SRC_DIR)/cesame cesame
 
 .PHONY : clean
 clean :
+	make -C $(LIB_DIR) clean
 	make -C $(SRC_DIR) clean
 	rm -f cesame
 	rm -rf $(OUT_DIR)*  # Remove output directories and files

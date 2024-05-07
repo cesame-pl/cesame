@@ -11,6 +11,16 @@ let make_struct_map struct_decls_list =
   let add_struct map sd =
     let dup_err = "Duplicate struct " ^ sd
 
+(* TODO: Insert them into the func_decls_list *)
+let buildin_funcs = [
+  ("printint", {rtyp = Int; fname = "printint";
+    params = [(Int, "x")]; body = []});
+  ("print", {rtyp = Int; fname = "print";
+    params = [(String, "s")]; body = []});
+  ("println", {rtyp = Int; fname = "println";
+    params = [(String, "s")]; body = []});
+]
+
 (* Helper function to create a function map *)
 let make_func_map func_decls_list =
   let built_in_decls = StringMap.add "print" {
