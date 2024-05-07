@@ -5,11 +5,17 @@ open Sast
 
 module StringMap = Map.Make(String)
 
-(* Help function to create a struct map. *)
+(* Helper function to create a struct map. *)
 (* struct def is a string name and a (typ * string) list *)
-let make_struct_map struct_decls_list = 
-  let add_struct map sd =
-    let dup_err = "Duplicate struct " ^ sd
+(* let make_struct_map struct_defs_list = 
+  let add_struct map (n, binds) =
+    let dup_err = "Duplicate struct " ^ n in
+    if StringMap.mem n map then
+      raise (Failure dup_err)
+    else
+      StringMap.add map n (n, binds) 
+  in
+  List.fold_left add_struct StringMap.empty struct_defs_list *)
 
 (* Helper function to create a function map *)
 let make_func_map func_decls_list =
@@ -153,11 +159,14 @@ let check_vdecl globals locals func_decl_list vdecl =
   match vdecl with
   | (t, s, None) -> 
     (match StringMap.find_opt s symbols with 
-    | None -> ((t,s)::locals, SVDecl(t, s, None))
+    | None -> ((t, s) :: locals, SVDecl(t, s, None))
     | _ -> raise (Failure("Duplicated definition of " ^ s ^ "!\n")))
   | (t, s, Some e) -> 
     (match StringMap.find_opt s symbols with 
-    | None -> let (rt, ex) = check_expr e (globals @ locals) func_decl_list in (if t = rt then ((t,s)::locals, SVDecl(t, s, Some (rt,ex))) else raise(Failure(string_of_typ t ^ " does not match " ^ string_of_typ rt)))
+    | None -> 
+      let (rt, ex) = check_expr e (globals @ locals) func_decl_list in 
+      if t = rt then ((t, s) :: locals, SVDecl(t, s, Some (rt,ex))) 
+      else raise(Failure(string_of_typ t ^ " does not match " ^ string_of_typ rt))
     | _ -> raise (Failure("Duplicated definition of " ^ s ^ "!\n")))
 
 (* Function to check statement lists *)
@@ -183,7 +192,7 @@ let rec check_stmt_list globals locals global_func_decls local_func_decls rtyp s
     - new local func decls
     - semantically validated sstmt
     (globals are not required since the statement does not modify global variables.) *)
-and check_stmt globals locals global_func_decls local_func_decls struct_decls rtyp stmt =
+and check_stmt globals locals global_func_decls local_func_decls rtyp stmt =
   (* vars: all variables; func_decls: all functions declarations *)
   let vars = globals @ locals and func_decls = global_func_decls @ local_func_decls in 
   
@@ -284,8 +293,11 @@ and check_stmt globals locals global_func_decls local_func_decls struct_decls rt
     else
       raise (Failure ("Return gives " ^ string_of_typ t ^
                       " expected " ^ string_of_typ rtyp ^ " in " ^ string_of_expr e))
-  | SDef(n, bl)
   | _ -> raise (Failure ("TODO:\n" ^ string_of_stmt stmt))
 
 (* Entry point for the semantic checker *)
-let check stmts = check_stmt_list [] [] [] [] Int stmts
+let check (struct_defs, stmts) = 
+  (* check struct_defs *)
+
+  (* check statements *)
+  check_stmt_list [] [] [] [] Int stmts

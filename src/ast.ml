@@ -46,8 +46,7 @@ type stmt =
   | While of expr * stmt
   (* int a; or int a = 1 + 2; the expression is optional *)
   | VDecl of typ * string * expr option
-  (* Struct *)
-  | SDef of string * bind list 
+  (* newable *)
   | Delete of string
   (* TODO: support return; *)
   | FDef of func_def (* Not first class function *)
@@ -65,8 +64,13 @@ and func_def = {
   body: stmt list;
 }
 
-(* type program = bind list * func_def list *)
-type program = stmt list
+type struct_def = {
+  sname: string;
+  body: bind list;
+}
+
+(* type program = struct_def list option * stmt list *)
+type program = struct_def list option * stmt list
 
 (* Pretty-printing functions *)
 let remove_last s =
@@ -127,8 +131,11 @@ and string_of_typ = function
 
 let string_of_bind (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 let string_of_bind_list l = 
-  let vdecls = List.map string_of_bind l in
-  String.concat "" vdecls
+  String.concat "" (List.map string_of_bind l)
+
+let string_of_struct_def (n, bl)= "struct " ^ n ^ "\n{\n" ^ string_of_bind_list bl  ^ "}\n"
+let string_of_struct_def_list l = 
+  String.concat "" (List.map string_of_struct_def l)
 
 (* Here, string_of_stmt, string_of_stmt_list, ..., string_of_fdef are all mutually recursive *)
 let rec string_of_stmt = function
@@ -147,7 +154,6 @@ let rec string_of_stmt = function
   | VDecl (t, id, opt_expr) ->
     string_of_typ t ^ " " ^ id ^ 
     (match opt_expr with None -> "" | Some(opt) -> " = " ^ string_of_expr opt) ^ ";\n"
-  | SDef(s, l)  -> "struct " ^ s ^ "\n{\n" ^ string_of_bind_list l  ^ "}\n"
   | Delete(s)   -> "delete " ^ s ^ ";\n"
   | FDef(f)     -> string_of_fdef f
   | Return(e)   -> "return " ^ string_of_expr e ^ ";\n"
@@ -170,6 +176,9 @@ and string_of_fdef fdef =
   fdef.fname ^ "(" ^ String.concat ", " (List.map snd fdef.params) ^ ")\n" ^ 
   string_of_stmt(Block(fdef.body))
 
-let string_of_program (stmts_l) =
+let string_of_program (struct_defs, stmts) =
   "\n\nParsed program: \n\n" ^
-  string_of_stmt_list stmts_l
+  (match struct_defs with 
+  | Some l -> string_of_struct_def_list l 
+  | None -> "") ^ 
+  string_of_stmt_list stmts
