@@ -178,6 +178,14 @@ let translate (program: sstmt list) : Llvm.llmodule =
       ignore(L.build_cond_br bool_val then_bb else_bb builder);
       L.builder_at_end context merge_bb) in
       (locals, build_if globals locals builder (se_sst_l, sst))
+    | SWhile(se, sst) -> let pred_bb = L.append_block context "while" lfunc in 
+    ignore(L.build_br pred_bb builder);
+    let body_bb = L.append_block context "while_body" lfunc in 
+    let (_, while_body_builder) = build_stmt globals locals (L.builder_at_end context body_bb) lfunc sst in add_terminal while_body_builder (L.build_br pred_bb);
+    let pred_builder = L.builder_at_end context pred_bb in 
+    let bool_val = build_expr globals locals pred_builder se in 
+    let merge_bb = L.append_block context "merge" lfunc in ignore(L.build_cond_br bool_val body_bb merge_bb pred_builder);
+    (locals, L.builder_at_end context merge_bb)
   and build_stmt_list globals locals builder lfunc= (*lfunc is the function it belongs to, builder is the corresponding builder, sl is the last param *)
   function
     [] -> builder
