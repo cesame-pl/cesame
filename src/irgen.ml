@@ -186,6 +186,18 @@ let translate (program: sstmt list) : Llvm.llmodule =
     let bool_val = build_expr globals locals pred_builder se in 
     let merge_bb = L.append_block context "merge" lfunc in ignore(L.build_cond_br bool_val body_bb merge_bb pred_builder);
     (locals, L.builder_at_end context merge_bb)
+    | SFor(init, end_cond, trans_exp, sstmt_list) -> 
+    let init_stmt = match init with 
+      Some s -> s
+    | None -> SExpr(Void, Noexpr) in
+    let end_cond_expr = match end_cond with
+      Some e -> e
+    | None -> (A.Bool, SBoolLit(true)) (*No test because there is no break*)
+    in let trans_stmt = match trans_exp with
+      Some s -> s
+    | None -> (A.Void, Noexpr) in 
+
+      build_stmt globals locals builder lfunc (SBlock([init_stmt; SWhile(end_cond_expr, SBlock([sstmt_list; SExpr(trans_stmt)]))]))
   and build_stmt_list globals locals builder lfunc= (*lfunc is the function it belongs to, builder is the corresponding builder, sl is the last param *)
   function
     [] -> builder
