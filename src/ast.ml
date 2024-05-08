@@ -9,7 +9,7 @@ type typ = Int | Char | Bool | Float | String | Array of typ | Void | Struct of 
 type bind = typ * string
 
 type expr =
-  Noexpr
+    Noexpr
   | Literal of int
   | CharLit of char
   | BoolLit of bool
@@ -72,44 +72,44 @@ let remove_last s =
   if String.length s > 0 then String.sub s 0 (String.length s - 1) else s
 
 let string_of_unaop = function
-    Not -> "!"
+    Not   -> "!"
 let string_of_binop = function
-    Add -> "+"
-  | Sub -> "-"
-  | Mul -> "*"
-  | Div -> "/"
-  | Mod -> "%"
-  | Ge -> ">="
-  | Le -> "<="
-  | Gt -> ">"
-  | Lt -> "<"
+    Add   -> "+"
+  | Sub   -> "-"
+  | Mul   -> "*"
+  | Div   -> "/"
+  | Mod   -> "%"
+  | Ge    -> ">="
+  | Le    -> "<="
+  | Gt    -> ">"
+  | Lt    -> "<"
   | Equal -> "=="
-  | Neq -> "!="
-  | And -> "&&"
-  | Or -> "||"
+  | Neq   -> "!="
+  | And   -> "&&"
+  | Or    -> "||"
 
 let rec string_of_expr = function
-    Literal(l) -> string_of_int l
-  | CharLit(c) -> "'" ^ Char.escaped c ^ "'"
-  | BoolLit(true) -> "true"
-  | BoolLit(false) -> "false"
-  | FloatLit(f) -> string_of_float f
-  | StrLit(s) -> "\"" ^ String.escaped s ^ "\""
-  | ArrayLit(a) ->  
+    Noexpr -> ""
+  | Literal (l) -> string_of_int l
+  | CharLit (c) -> "'" ^ Char.escaped c ^ "'"
+  | BoolLit (true) -> "true"
+  | BoolLit (false) -> "false"
+  | FloatLit (f) -> string_of_float f
+  | StrLit (s) -> "\"" ^ String.escaped s ^ "\""
+  | ArrayLit (a) ->  
     let rec string_of_list a = match a with
-      [] -> ""
+        [] -> ""
       | [element] -> string_of_expr element
-      | hd::tl -> (string_of_expr (hd)) ^ ", " ^ (string_of_list (tl)) 
+      | hd :: tl -> (string_of_expr hd) ^ ", " ^ (string_of_list tl) 
     in "[" ^ string_of_list a ^ "]"
-  | Id(s) -> s
-  | Unaop(o, e) -> string_of_unaop o ^ string_of_expr e
-  | Binop(e1, o, e2) -> string_of_expr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_expr e2
-  | Assign(e1, e2) -> string_of_expr e1 ^ " = " ^ string_of_expr e2
-  | Call(f, el) -> f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
-  | New(n) -> string_of_newable n
-  | AccessMember(e1, e2) -> string_of_expr e1 ^ "." ^ string_of_expr e2
-  | AccessEle(e1, e2) -> string_of_expr e1 ^ "[" ^ string_of_expr e2 ^ "]"
-  | Noexpr -> ""
+  | Id (s) -> s
+  | Unaop (o, e) -> string_of_unaop o ^ string_of_expr e
+  | Binop (e1, o, e2) -> string_of_expr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_expr e2
+  | Assign (e1, e2) -> string_of_expr e1 ^ " = " ^ string_of_expr e2
+  | Call (f, el) -> f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
+  | New (n) -> string_of_newable n
+  | AccessMember (e1, e2) -> string_of_expr e1 ^ "." ^ string_of_expr e2
+  | AccessEle (e1, e2) -> string_of_expr e1 ^ "[" ^ string_of_expr e2 ^ "]"
 
 and string_of_newable = function
   | NewStruct(s) -> "new " ^ s
@@ -119,9 +119,9 @@ and string_of_typ = function
 | Char -> "char"
 | Bool -> "bool"
 | String -> "String"
-| Array(t) -> "Array<" ^ string_of_typ t ^ ">"
+| Array (t) -> "Array<" ^ string_of_typ t ^ ">"
 | Float -> "float"
-| Struct(s) -> s;
+| Struct (s) -> s;
 | Void -> ""
 
 let string_of_bind (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
@@ -131,34 +131,34 @@ let string_of_bind_list l =
 
 (* Here, string_of_stmt, string_of_stmt_list, ..., string_of_fdef are all mutually recursive *)
 let rec string_of_stmt = function
-    Block(stmts) -> "{\n" ^ string_of_stmt_list stmts ^ "}\n"
-  | Expr(e)      -> string_of_expr e ^ ";\n"
-  | If(l, s)     -> 
+    Block (stmts) -> "{\n" ^ string_of_stmt_list stmts ^ "}\n"
+  | Expr (e)      -> string_of_expr e ^ ";\n"
+  | If (l, s)     -> 
     let string_of_if (e, s) = "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s in 
       String.concat "el" (List.map string_of_if (List.rev l)) ^
       (match s with Expr(Noexpr) -> "" | _ -> "else\n" ^ string_of_stmt s)
-  | For(stmt_init, e_cond, e_trans, stmt_l) ->
+  | For (stmt_init, e_cond, e_trans, stmt_l) ->
     "for (" ^ remove_last (string_of_opt_stmt stmt_init) ^ " " ^ 
               string_of_opt_expr e_cond ^ "; " ^ 
               string_of_opt_expr e_trans ^ ") " ^ 
     string_of_stmt(Block(stmt_l))
-  | While(e, s) -> "while (" ^ string_of_expr e ^ ") \n" ^ string_of_stmt s
+  | While (e, s) -> "while (" ^ string_of_expr e ^ ") \n" ^ string_of_stmt s
   | VDecl (t, id, opt_expr) ->
     string_of_typ t ^ " " ^ id ^ 
     (match opt_expr with None -> "" | Some(opt) -> " = " ^ string_of_expr opt) ^ ";\n"
-  | SDef(s, l)  -> "struct " ^ s ^ "\n{\n" ^ string_of_bind_list l  ^ "}\n"
-  | Delete(s)   -> "delete " ^ s ^ ";\n"
-  | FDef(f)     -> string_of_fdef f
-  | Return(e)   -> "return " ^ string_of_expr e ^ ";\n"
-  | Break       -> "break;\n"
-  | Continue    -> "continue;\n"
+  | SDef (s, l)  -> "struct " ^ s ^ "\n{\n" ^ string_of_bind_list l  ^ "}\n"
+  | Delete (s)   -> "delete " ^ s ^ ";\n"
+  | FDef (f)     -> string_of_fdef f
+  | Return (e)   -> "return " ^ string_of_expr e ^ ";\n"
+  | Break        -> "break;\n"
+  | Continue     -> "continue;\n"
 
 and string_of_opt_expr = function (* for an optional expr *)
-  None -> ""
+    None -> ""
   | Some(e) -> string_of_expr e
 
 and string_of_opt_stmt = function (* for an optional statement *)
-  None -> "; "
+    None -> "; "
   | Some(s) -> string_of_stmt s
 
 and string_of_stmt_list l =
