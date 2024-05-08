@@ -5,31 +5,24 @@ open Sast
 
 module StringMap = Map.Make(String)
 
-(* TODO: Insert them into the func_decls_list *)
-let buildin_funcs = [
-  ("printint", {rtyp = Int; fname = "printint";
-    params = [(Int, "x")]; body = []});
-  ("print", {rtyp = Int; fname = "print";
-    params = [(String, "s")]; body = []});
-  ("println", {rtyp = Int; fname = "println";
-    params = [(String, "s")]; body = []});
+(* Insert them into the func_decls_list *)
+let build_in_funcs = [
+  { rtyp = Int; fname = "print"; params = []; body = [] };
 ]
 
 (* Helper function to create a function map *)
 let make_func_map func_decls_list =
-  let built_in_decls = StringMap.add "print" {
-    rtyp = Int;
-    fname = "print";
-    params = [(Int, "x")];
-    body = [] } StringMap.empty in
   let add_func map fd =
-    let built_in_err = "Function " ^ fd.fname ^ " may not be defined" in
+    let built_in_err = "Redefinition of built-in function '" ^ fd.fname in
     let dup_err = "Duplicate function " ^ fd.fname in
-    let make_err e = raise (Failure e) in
     match fd with
-    | _ when StringMap.mem fd.fname built_in_decls -> make_err built_in_err
-    | _ when StringMap.mem fd.fname map -> make_err dup_err
+    | _ when StringMap.mem fd.fname map ->
+      if List.exists (fun tmp -> tmp.fname = fd.fname) build_in_funcs then 
+        raise (Failure built_in_err)
+      else 
+        raise (Failure dup_err)
     | _ -> StringMap.add fd.fname fd map in
+    let built_in_decls = List.fold_left add_func StringMap.empty build_in_funcs in
   List.fold_left add_func built_in_decls func_decls_list
 
 (* Helper function to find a function by name in the function map *)
@@ -118,6 +111,13 @@ let rec check_expr e bind_list func_decl_list =
     let err = "Illegal assignment " ^ string_of_typ lt ^ " = " ^
               string_of_typ rt ^ " in " ^ string_of_expr ex in
     (check_assign lt rt err, SAssign((lt, e1), (rt, e2)))
+  (* for print calls, skip parameter validation since the types and numbers of parameters are unknown. *)
+  | Call("print", args) as call ->
+    if List.length args != 1 then 
+      raise (Failure ("Expecting 1 argument in " ^ string_of_expr call))
+    else 
+      let args' = List.map (fun e -> check_expr e bind_list func_decl_list) args in 
+      (Int, SCall("print", args'))
   | Call(fname, args) as call ->
     let fd = find_func fname func_map in
     let param_length = List.length fd.params in
