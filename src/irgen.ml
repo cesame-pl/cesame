@@ -72,15 +72,6 @@ let translate (program: sstmt list) : Llvm.llmodule =
     | SFloatLit(f) -> L.const_float f64_t f
     | SStrLit (s)  -> L.build_global_stringptr s "str" builder
     | SId (s)      -> L.build_load (var_addr_lookup globals locals s) s builder
-    | SAssign ((lt, se1), (rt, se2)) -> 
-      let e' = build_expr globals locals builder (rt, se2) in
-      let s = match se1 with
-        SId var -> var
-        | _ -> raise (Failure("LHS cannot be assigned to."))
-      in ignore(L.build_store e' (var_addr_lookup globals locals s) builder); e'
-    | SCall ("print", [e]) ->
-      let printf_format = L.build_global_stringptr (fmt_str_of_typ (fst e)) "fmt" builder in
-      L.build_call printf_func [| printf_format; (build_expr globals locals builder e) |] "printf" builder
     | SUnaop (op, e) ->
       let e' = build_expr globals locals builder e in 
       (match op with 
@@ -133,7 +124,15 @@ let translate (program: sstmt list) : Llvm.llmodule =
         | Gt    -> L.build_fcmp L.Fcmp.Ogt
         | Lt    -> L.build_fcmp L.Fcmp.Olt) 
       |_ -> raise (Failure err)) e1' e2' "tmp" builder
-    | Noexpr -> L.const_int i32_t 0
+    | SAssign ((lt, se1), (rt, se2)) -> 
+      let e' = build_expr globals locals builder (rt, se2) in
+      let s = match se1 with
+        SId var -> var
+        | _ -> raise (Failure("LHS cannot be assigned to."))
+      in ignore(L.build_store e' (var_addr_lookup globals locals s) builder); e'
+    | SCall ("print", [e]) ->
+      let printf_format = L.build_global_stringptr (fmt_str_of_typ (fst e)) "fmt" builder in
+      L.build_call printf_func [| printf_format; (build_expr globals locals builder e) |] "printf" builder
   in
 
   let rec build_stmt globals locals builder lfunc= function
