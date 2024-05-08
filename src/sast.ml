@@ -44,12 +44,12 @@ and sfunc_def = {
   sbody: sstmt list;
 }
 
-type sstruct_def = {
+type sstruct_decl = {
   ssname: string;
   sbody: bind list;
 }
 
-type sprogram = sstruct_def list option * sstmt list
+type sprogram = sstruct_decl list * sstmt list
 
 (* Pretty-printing functions *)
 let rec string_of_sexpr (t, e) =
@@ -116,9 +116,6 @@ and string_of_sfdef fdef =
   fdef.sfname ^ "(" ^ String.concat ", " (List.map snd fdef.sparams) ^ ")\n" ^ 
   string_of_sstmt(SBlock(fdef.sbody))
 
-let string_of_sprogram (sstruct_defs, sstmts) =
+let string_of_sprogram (sstruct_decls, sstmts) =
   "\n\nSementically checked program: \n\n" ^
-  (match sstruct_defs with 
-  | Some l -> string_of_struct_def_list l 
-  | None -> "") ^ 
-  string_of_sstmt_list sstmts
+  string_of_struct_decl_list sstruct_decls ^ string_of_sstmt_list sstmts

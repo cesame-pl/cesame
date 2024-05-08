@@ -64,13 +64,13 @@ and func_def = {
   body: stmt list;
 }
 
-type struct_def = {
+type struct_decl = {
   sname: string;
   body: bind list;
 }
 
-(* type program = struct_def list option * stmt list *)
-type program = struct_def list option * stmt list
+(* type program = struct_decl list option * stmt list *)
+type program = struct_decl list * stmt list
 
 (* Pretty-printing functions *)
 let remove_last s =
@@ -133,9 +133,9 @@ let string_of_bind (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 let string_of_bind_list l = 
   String.concat "" (List.map string_of_bind l)
 
-let string_of_struct_def (n, bl)= "struct " ^ n ^ "\n{\n" ^ string_of_bind_list bl  ^ "}\n"
-let string_of_struct_def_list l = 
-  String.concat "" (List.map string_of_struct_def l)
+let string_of_struct_decl decl = "struct " ^ decl.sname ^ "\n{\n" ^ string_of_bind_list decl.body  ^ "}\n"
+let string_of_struct_decl_list l = 
+  String.concat "" (List.map string_of_struct_decl l)
 
 (* Here, string_of_stmt, string_of_stmt_list, ..., string_of_fdef are all mutually recursive *)
 let rec string_of_stmt = function
@@ -176,9 +176,6 @@ and string_of_fdef fdef =
   fdef.fname ^ "(" ^ String.concat ", " (List.map snd fdef.params) ^ ")\n" ^ 
   string_of_stmt(Block(fdef.body))
 
-let string_of_program (struct_defs, stmts) =
+let string_of_program (struct_decl_list, stmts) =
   "\n\nParsed program: \n\n" ^
-  (match struct_defs with 
-  | Some l -> string_of_struct_def_list l 
-  | None -> "") ^ 
-  string_of_stmt_list stmts
+  string_of_struct_decl_list struct_decl_list  ^  string_of_stmt_list stmts
