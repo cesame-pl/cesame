@@ -1,0 +1,19 @@
+
+int x;
+int y;
+x = 3;
+y = 2;
+bool b = false;
+
+/* You can do if (elif)+ (else)* */
+
+if (x == 1) {
+  int b = 1;
+  print(b);
+}
+elif (x == 2) {
+  print(x);
+} else {
+  x = 5;
+  print(x);
+}

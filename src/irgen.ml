@@ -140,10 +140,9 @@ let translate (program: sstmt list) : Llvm.llmodule =
         | A.Gt -> L.build_fcmp L.Fcmp.Ogt
         | A.Lt -> L.build_fcmp L.Fcmp.Olt) 
       |_ -> raise (Failure err)) e1' e2' "tmp" builder
+    | Noexpr -> L.const_int i32_t 0
   in
-  
-  (* build_stmt returns (new_locals, new_func_decls, builder) *)
-  let rec build_stmt globals locals builder = function
+  let rec build_stmt globals locals builder lfunc= function
     SExpr(se) -> ignore(build_expr globals locals builder se); (locals, builder)
     (* If it's a declaration, insert it into the locals. The bind is the first element of locals *)
     (* Why do we need local_func_decls here? *)
@@ -163,14 +162,28 @@ let translate (program: sstmt list) : Llvm.llmodule =
       in let e' = build_expr globals locals builder (rt, re)
       in ignore(L.build_store e' lhs_addr builder);
       (new_locals, builder)
-  in
-
-  let rec build_stmt_list globals locals builder = (* sl is the last param *)
+    | SBlock(sstmt_l) -> let new_builder = build_stmt_list (combine_maps globals locals) StringMap.empty builder lfunc sstmt_l in  (locals, new_builder)
+    | SIf(se_sst_l, sst) -> let rec build_if globals locals builder = 
+      function
+      ([] , sst) -> let (_, new_builder) = build_stmt globals locals builder lfunc sst in new_builder 
+      | ((fse, then_sst)::else_sl, sst) -> (let bool_val = build_expr globals locals builder fse in 
+      let merge_bb = L.append_block context "merge" lfunc in 
+      let b_br_merge = L.build_br merge_bb in 
+      let then_bb = L.append_block context "then" lfunc in 
+      let (_, then_stmt_builder) = build_stmt globals locals (L.builder_at_end context then_bb) lfunc then_sst in 
+      add_terminal then_stmt_builder b_br_merge; 
+      let else_bb = L.append_block context "else" lfunc in 
+      let else_stmt_builer = build_if globals locals (L.builder_at_end context else_bb) (else_sl, sst) in 
+      add_terminal else_stmt_builer b_br_merge;
+      ignore(L.build_cond_br bool_val then_bb else_bb builder);
+      L.builder_at_end context merge_bb) in
+      (locals, build_if globals locals builder (se_sst_l, sst))
+  and build_stmt_list globals locals builder lfunc= (*lfunc is the function it belongs to, builder is the corresponding builder, sl is the last param *)
   function
     [] -> builder
     | s :: sl -> 
-    let (new_locals, _) = build_stmt globals locals builder s
-    in build_stmt_list globals new_locals builder sl
+    let (new_locals, new_builder) = build_stmt globals locals builder lfunc s
+    in build_stmt_list globals new_locals new_builder lfunc sl
   in
 
   
@@ -190,7 +203,7 @@ let translate (program: sstmt list) : Llvm.llmodule =
 
   let main = L.define_function "main" (L.function_type i32_t [||]) the_module in
   let builder = L.builder_at_end context (L.entry_block main) in
-  let main_builder = build_stmt_list globals locals builder program in
+  let main_builder = build_stmt_list globals locals builder main program in
   let _ = add_terminal main_builder (L.build_ret (L.const_int i32_t 0)) in
 
   the_module
