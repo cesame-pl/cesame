@@ -177,7 +177,7 @@ let translate (program: sstmt list) : Llvm.llmodule =
       add_terminal else_stmt_builer b_br_merge;
       ignore(L.build_cond_br bool_val then_bb else_bb builder);
       L.builder_at_end context merge_bb) in
-      (locals, build_if globals locals builder (se_sst_l, sst))
+      (locals, build_if globals locals builder (List.rev se_sst_l, sst))
     | SWhile(se, sst) -> let pred_bb = L.append_block context "while" lfunc in 
     ignore(L.build_br pred_bb builder);
     let body_bb = L.append_block context "while_body" lfunc in 
