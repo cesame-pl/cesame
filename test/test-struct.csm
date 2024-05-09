@@ -4,7 +4,6 @@ struct Student {
     Array<String> courses;
 };
 
-Student a;
 Student a = new Student;
 a.name = "Mike";
 a.age = 22;
@@ -12,7 +11,7 @@ a.courses = ["math", "history", "cs"];
 a.courses[0] = "french";
 
 Student b;
-Student b = new Student;
+b = new Student;
 b.name = "Alice";
 b.age = 24;
 

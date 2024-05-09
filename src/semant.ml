@@ -5,6 +5,28 @@ open Sast
 
 module StringMap = Map.Make(String)
 
+(* Helper function to create a struct map. *)
+(* struct def is a string name and a (typ * string) list *)
+(* let make_struct_map struct_decls_list = 
+  let add_struct map (n, binds) =
+    let dup_err = "Duplicate struct " ^ n in
+    if StringMap.mem n map then
+      raise (Failure dup_err)
+    else
+      StringMap.add map n (n, binds) 
+  in
+  List.fold_left add_struct StringMap.empty struct_decls_list *)
+
+(* TODO: Insert them into the func_decls_list *)
+let buildin_funcs = [
+  ("printint", {rtyp = Int; fname = "printint";
+    params = [(Int, "x")]; body = []});
+  ("print", {rtyp = Int; fname = "print";
+    params = [(String, "s")]; body = []});
+  ("println", {rtyp = Int; fname = "println";
+    params = [(String, "s")]; body = []});
+]
+
 (* Insert them into the func_decls_list *)
 let build_in_funcs = [
   { rtyp = Int; fname = "print"; params = []; body = [] };
@@ -291,4 +313,8 @@ and check_stmt globals locals global_func_decls local_func_decls rtyp stmt =
   | _ -> raise (Failure ("TODO:\n" ^ string_of_stmt stmt))
 
 (* Entry point for the semantic checker *)
-let check stmts = check_stmt_list [] [] [] [] Int stmts
+let check (struct_decls, stmts) = 
+  (* check struct_decls *)
+  (struct_decls,
+  (* check statements *)
+  check_stmt_list [] [] [] [] Int stmts)

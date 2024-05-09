@@ -15,7 +15,7 @@ let combine_maps globals locals =
   ) locals;
   !combined_map
 
-let translate (program: sstmt list) : Llvm.llmodule = 
+let translate (program: struct_decl list * sstmt list) : Llvm.llmodule = 
   
   (* LLVM envs *)
   let context    = L.global_context () in
@@ -232,7 +232,8 @@ let translate (program: sstmt list) : Llvm.llmodule =
 
   let main = L.define_function "main" (L.function_type i32_t [||]) the_module in
   let builder = L.builder_at_end context (L.entry_block main) in
-  let main_builder = build_stmt_list globals locals builder main program in
+  let (program_sdecl_list, program_stmt_list) = program in
+  let main_builder = build_stmt_list globals locals builder main program_stmt_list in
   let _ = add_terminal main_builder (L.build_ret (L.const_int i32_t 0)) in
 
   the_module

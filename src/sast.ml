@@ -32,11 +32,9 @@ type sstmt =
   | SFor of (sstmt option) * (sexpr option) * (sexpr option) * (sstmt)
   | SWhile of sexpr * sstmt
   | SVDecl of typ * string * sexpr option
-  | SSDef of string * (typ * string) list
   | SDelete of string
-  (* return *)
-  | SReturn of sexpr
   | SFDef of sfunc_def
+  | SReturn of sexpr
 
 (* func_def: ret_typ fname params body *)
 and sfunc_def = {
@@ -46,7 +44,12 @@ and sfunc_def = {
   sbody: sstmt list;
 }
 
-type sprogram = sstmt list
+type sstruct_decl = {
+  ssname: string;
+  sbody: bind list;
+}
+
+type sprogram = sstruct_decl list * sstmt list
 
 (* Pretty-printing functions *)
 let rec string_of_sexpr (t, e) =
@@ -93,10 +96,9 @@ let rec string_of_sstmt = function
   | SVDecl (t, id, opt_expr) -> 
     string_of_typ t ^ " " ^ id ^
     (match opt_expr with None -> "" | Some(opt) -> " = " ^ string_of_sexpr opt) ^ ";\n"
-  | SSDef (s, l)    -> string_of_stmt(SDef(s, l))
-  | SDelete (s)     -> string_of_stmt(Delete(s))
-  | SFDef (f)       -> string_of_sfdef f
-  | SReturn (e)     -> "return " ^ string_of_sexpr e ^ ";\n"
+  | SDelete(s)     -> string_of_stmt(Delete(s))
+  | SFDef(f)       -> string_of_sfdef f
+  | SReturn(e)     -> "return " ^ string_of_sexpr e ^ ";\n"
 
 and string_of_opt_sexpr = function
     None -> ""
@@ -114,7 +116,6 @@ and string_of_sfdef fdef =
   fdef.sfname ^ "(" ^ String.concat ", " (List.map snd fdef.sparams) ^ ")\n" ^ 
   string_of_sstmt(SBlock(fdef.sbody))
 
-let string_of_sprogram sstmts =
+let string_of_sprogram (sstruct_decls, sstmts) =
   "\n\nSementically checked program: \n\n" ^
-  string_of_sstmt_list sstmts
-  
+  string_of_struct_decl_list sstruct_decls ^ string_of_sstmt_list sstmts
