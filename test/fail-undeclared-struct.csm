@@ -1,0 +1,10 @@
+struct Student {
+    String name;
+    int age;
+    Array<String> courses;
+};
+
+struct School {
+    String name;
+    Array<Teacher> all_teachers; // Teachers are not defined!
+};

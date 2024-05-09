@@ -10,6 +10,7 @@ and sx =
   | SBoolLit of bool
   | SFloatLit of float
   | SStrLit of string
+  | StructLit of (string * sexpr) list
   | SArrayLit of sexpr list
   | SId of string
   | SUnaop of unaop * sexpr
@@ -19,7 +20,7 @@ and sx =
   | SCall of string * sexpr list
   | SNew of snewable
   | SAccessMember of sexpr * sexpr
-  | SAccessEle of sexpr * sexpr
+  | SAccessEle of sexpr * sexpr (* The second sexpr can be only be of int type, so can be an expr *)
 
 and snewable = 
   SNewStruct of string
