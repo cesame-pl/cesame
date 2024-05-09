@@ -1,8 +1,9 @@
-int i = 4;
-print(i);
+Array<int> a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+for (int i = 0; i < 10; i++) {
+    print(a[i]);
+}
 
-float f = 1.2;
-print(f);
-
-String s = "Hello World!";
-print(s);
+Array<String> s = ["H", "E", "L", "L", "O", "W", "O", "R", "L", "D"];
+for (int i = 0; i < 10; i++) {
+    print(s[i]);
+}

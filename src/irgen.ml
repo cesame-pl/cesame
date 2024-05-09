@@ -37,7 +37,28 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     | Char   -> char_t
     | String -> char_pt
   in
-  
+
+  (* Function to determine the size of an array *)
+  (* Takes sx as SArrayList l *)
+  let size_of_arr = function
+        SArrayLit l -> List.length l
+      | _ -> raise (Failure "Excepted an array")
+  in
+  (* Recursive function to determine the LLVM type of an array *)
+  (* Takes in sexpr *)
+  let rec ltype_of_arr (t, sx) = 
+    match t with 
+    | Array el_type (* element_type *) -> 
+      let size = size_of_arr sx in 
+      if size = 0 then 
+        L.array_type (ltype_of_typ el_type) 0 
+      else
+        (* assume all the elements have the same size *)
+        let fst = (match sx with | SArrayLit l -> List.hd l | _ -> raise (Failure "Expected an array")) in 
+        L.array_type (ltype_of_arr fst) size
+    | _ -> ltype_of_typ t
+  in
+
   (* Function to add a terminal instruction *)
   let add_terminal builder instr =
     match L.block_terminator (L.insertion_block builder) with
@@ -67,7 +88,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
 
   (* Recursive function to build LLVM IR for expressions *)
   (* Takes in an sexpr; Returns Llvalue *)
-  let rec build_expr globals locals builder ((_, sx) : sexpr) : L.llvalue = 
+  let rec build_expr globals locals builder ((t, sx) : sexpr) : L.llvalue =
     match sx with
       Noexpr          -> L.const_int i32_t 0
     | SLiteral (i)    -> L.const_int i32_t i
@@ -75,11 +96,20 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     | SBoolLit (b)    -> L.const_int bool_t (if b then 1 else 0)
     | SFloatLit (f)   -> L.const_float f64_t f
     | SStrLit (s)     -> L.build_global_stringptr s "str" builder
+    | SArrayLit (l)   -> 
+      let arr_size = size_of_arr sx in 
+      let arr_ptr = L.build_alloca (ltype_of_arr (t, sx)) "arr" builder in 
+      for i = 0 to arr_size - 1 do 
+        let el_ptr = L.build_in_bounds_gep arr_ptr [|L.const_int i32_t 0; L.const_int i32_t i|] "tmp" builder in
+        let el_val = build_expr globals locals builder (List.nth l i) in
+        ignore (L.build_store el_val el_ptr builder)
+      done;
+      arr_ptr;
     | SId (s)         -> L.build_load (var_addr_lookup globals locals s) s builder
     | SUnaop (op, se) ->
       let e' = build_expr globals locals builder se in 
       (match op with 
-      | Not -> L.build_not e' "tmp" builder)
+        Not -> L.build_not e' "tmp" builder)
     | SBinop (se1, op, se2) ->
       (* check if se1 and se2 are valid in semant *)
       (* print_string (string_of_sexpr((t,  SBinop(se1, op, se2)))); *)
@@ -87,7 +117,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let e2' = build_expr globals locals builder se2 in
       let err = "Unsupported binary operation for this type" in
       (match fst se1 with
-      | Bool -> 
+        Bool -> 
         (match op with 
           And   -> L.build_and
         | Or    -> L.build_or
@@ -136,6 +166,12 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     | SCall ("print", [se]) ->
       let printf_format = L.build_global_stringptr (fmt_str_of_typ (fst se)) "fmt" builder in
       L.build_call printf_func [| printf_format; (build_expr globals locals builder se) |] "printf" builder
+    | SAccessEle (se1, se2) -> 
+      (* TODO: test more complicated se like student.courses[0] *)
+      let e1' = build_expr globals locals builder se1 in 
+      let e2' = build_expr globals locals builder se2 in 
+      let el_ptr = L.build_in_bounds_gep e1' [|L.const_int i32_t 0; e2'|] "tmp" builder in 
+      L.build_load el_ptr "tmp" builder
   in
 
   (* Recursive function to build LLVM IR for statements *)
@@ -155,10 +191,12 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let new_locals = StringMap.add var_name lhs_addr locals in 
       (new_locals, builder)
     | SVDecl (t, var_name, Some (rt, re)) -> (* right type and right expression *)
-      let lhs_addr = match t with
+      let ltype = match t with 
         (* TODO: ADD functions *)
-        | _ -> L.build_alloca (ltype_of_typ t) var_name builder
-      in 
+          Array _ -> L.pointer_type (ltype_of_arr (rt, re))
+        | _ -> ltype_of_typ rt
+      in
+      let lhs_addr = L.build_alloca ltype var_name builder in
       let new_locals = StringMap.add var_name lhs_addr locals in (* Add var_name -> var_addr to the map *)
       let e' = build_expr globals locals builder (rt, re) in
       ignore(L.build_store e' lhs_addr builder);

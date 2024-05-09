@@ -159,7 +159,7 @@ let rec check_expr e bind_list func_decl_list =
     let se1 = check_expr e1 bind_list func_decl_list
     and se2 = check_expr e2 bind_list func_decl_list in 
     match fst se1, fst se2 with 
-      Array t, Int -> (t, SAccessMember(se1, se2))
+      Array t, Int -> (t, SAccessEle(se1, se2))
     | Array _, _ -> raise (Failure "Index must be an integer value.")
     | _ -> raise (Failure("Cannot apply the operator '[]' to " ^ string_of_expr e1))
   | _ -> raise (Failure("TODO:\n" ^ string_of_expr e))
