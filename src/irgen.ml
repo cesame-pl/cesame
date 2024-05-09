@@ -47,15 +47,13 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   (* Recursive function to determine the LLVM type of an array *)
   (* Takes in sexpr *)
   let rec ltype_of_arr (t, sx) = 
-    match t with 
-    | Array el_type (* element_type *) -> 
+    match t, sx with 
+    | (Array el_type, SArrayLit l) (* element_type *) -> 
       let size = size_of_arr sx in 
       if size = 0 then 
         L.array_type (ltype_of_typ el_type) 0 
-      else
-        (* assume all the elements have the same size *)
-        let fst = (match sx with | SArrayLit l -> List.hd l | _ -> raise (Failure "Expected an array")) in 
-        L.array_type (ltype_of_arr fst) size
+      else (* assume all the elements have the same size *)
+        L.array_type (ltype_of_arr (List.hd l)) size
     | _ -> ltype_of_typ t
   in
 
@@ -80,12 +78,6 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   let printf_func : L.llvalue = 
     L.declare_function "printf" printf_t the_module in
 
-  (* Helper function to look up variable from both the global and local scope (local first) *)
-  let var_addr_lookup globals locals var_name: L.llvalue = 
-    try StringMap.find var_name locals
-      with Not_found -> StringMap.find var_name globals
-  in
-
   (* Recursive function to build LLVM IR for expressions *)
   (* Takes in an sexpr; Returns Llvalue *)
   let rec build_expr globals locals builder ((t, sx) : sexpr) : L.llvalue =
@@ -105,7 +97,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
         ignore (L.build_store el_val el_ptr builder)
       done;
       arr_ptr;
-    | SId (s)         -> L.build_load (var_addr_lookup globals locals s) s builder
+    | SId (s)         -> L.build_load (var_addr_lookup globals locals builder sx) s builder
     | SUnaop (op, se) ->
       let e' = build_expr globals locals builder se in 
       (match op with 
@@ -158,11 +150,9 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
         | Lt    -> L.build_fcmp L.Fcmp.Olt) 
       | _ -> raise (Failure err)) e1' e2' "tmp" builder
     | SAssign (se1, se2) -> 
-      let e' = build_expr globals locals builder se2 in
-      let s = match snd se1 with
-          SId var -> var
-        | _ -> raise (Failure("LHS cannot be assigned to."))
-      in ignore(L.build_store e' (var_addr_lookup globals locals s) builder); e'
+      let e1' = var_addr_lookup globals locals builder (snd se1) in 
+      let e2' = build_expr globals locals builder se2 in
+      ignore(L.build_store e2' e1' builder); e2'
     | SCall ("print", [se]) ->
       let printf_format = L.build_global_stringptr (fmt_str_of_typ (fst se)) "fmt" builder in
       L.build_call printf_func [| printf_format; (build_expr globals locals builder se) |] "printf" builder
@@ -172,7 +162,20 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let e2' = build_expr globals locals builder se2 in 
       let el_ptr = L.build_in_bounds_gep e1' [|L.const_int i32_t 0; e2'|] "tmp" builder in 
       L.build_load el_ptr "tmp" builder
-  in
+
+  (* Helper function to look up variable from both the global and local scope (local first) *)
+  (* Takes in sx; Returns llvalue *)
+  and var_addr_lookup globals locals builder sx : L.llvalue = 
+    match sx with 
+      SId (s) -> 
+      (try StringMap.find s locals
+        with Not_found -> StringMap.find s globals)
+    | SAccessEle (se1, se2) ->
+      let e1' = build_expr globals locals builder se1 in 
+      let e2' = build_expr globals locals builder se2 in 
+      L.build_in_bounds_gep e1' [|L.const_int i32_t 0; e2'|] "tmp" builder
+    (* TODO: AccessMember *)
+  in 
 
   (* Recursive function to build LLVM IR for statements *)
   let rec build_stmt globals locals builder lfunc = function
