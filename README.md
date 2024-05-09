@@ -54,6 +54,7 @@ make
 - Shortcut for declaration and definition on the same line (by Teng and Yunjia)
 - Structs (by Teng and Yunjia)
 - new and delete (by Teng and Yunjia)
+- Semantics for struct (by Teng and Yunjia)
 
 ## Work Remaining
 - **Timeline:**
