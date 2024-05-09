@@ -129,6 +129,14 @@ ifelifstmt:
     IF LPAREN expr RPAREN stmt              { [($3, $5)] }
   | ifelifstmt ELIF LPAREN expr RPAREN stmt { ($4, $6)::$1 }
 
+// /* For struct lit */
+dot_assign:
+   DOT ID ASSIGN expr { ($2, $4) }
+dot_assign_list:
+  /* nothing */     { [] }
+  | dot_assign      {[$1]}
+  | dot_assign COMMA dot_assign_list { $1::$3 }
+
 expr:
     LITERAL          { Literal($1)            }
   | CLIT             { CharLit($1)            }
@@ -136,6 +144,7 @@ expr:
   | FLIT             { FloatLit($1)           }
   | STRLIT           { StrLit($1)             }
   | LSQBRACE elements RSQBRACE { ArrayLit($2) }
+  | LBRACE dot_assign_list RBRACE { StructLit($2) }
   | lvalue           { $1                     }
   | lvalue ASSIGN expr { Assign($1, $3)       }
   | lvalue INC       { Assign($1, Binop($1, Add, Literal(1))) }

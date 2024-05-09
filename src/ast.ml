@@ -15,6 +15,7 @@ type expr =
   | BoolLit of bool
   | FloatLit of float
   | StrLit of string
+  | StructLit of (string * expr) list
   | ArrayLit of expr list
   | Id of string (* These are constructors; We can use Id(some_string) to construction a expr *)
   | Unaop of unaop * expr
@@ -107,6 +108,8 @@ let rec string_of_expr = function
       | [element] -> string_of_expr element
       | hd :: tl -> (string_of_expr hd) ^ ", " ^ (string_of_list tl) 
     in "[" ^ string_of_list a ^ "]"
+  | StructLit (assign_list) ->
+    "{ " ^ String.concat ", " (List.map string_of_dot_assign assign_list) ^ " }"
   | Id (s) -> s
   | Unaop (o, e) -> string_of_unaop o ^ string_of_expr e
   | Binop (e1, o, e2) -> string_of_expr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_expr e2
@@ -116,6 +119,8 @@ let rec string_of_expr = function
   | AccessMember (e1, e2) -> string_of_expr e1 ^ "." ^ string_of_expr e2
   | AccessEle (e1, e2) -> string_of_expr e1 ^ "[" ^ string_of_expr e2 ^ "]"
 
+and string_of_dot_assign = function
+  | (l, r) ->  "." ^ l ^ " = " ^ (string_of_expr r)
 and string_of_newable = function
   | NewStruct(s) -> "new " ^ s
 

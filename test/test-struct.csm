@@ -4,16 +4,22 @@ struct Student {
     Array<String> courses;
 };
 
-Student a = new Student;
+// Student a = new Student;
+Student a;
 a.name = "Mike";
 a.age = 22;
 a.courses = ["math", "history", "cs"];
 a.courses[0] = "french";
 
-Student b;
-b = new Student;
-b.name = "Alice";
-b.age = 24;
+/* Not yet supported */
+// b = new Student;
+Student b =  { .name = "Alice", .age = 24, .courses = ["PLT", "OS"] };
+
+/* Not yet supported */
+Student c;
+c = { .name = "Bob", .age = 52 };
 
 Array<Student> students = [a, b];
-String c = a.courses[1];
+String d = a.courses[1];
+
+print(c);
