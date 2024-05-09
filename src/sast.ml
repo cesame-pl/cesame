@@ -10,7 +10,7 @@ and sx =
   | SBoolLit of bool
   | SFloatLit of float
   | SStrLit of string
-  | StructLit of (string * sexpr) list
+  | SStructLit of (string * sexpr) list
   | SArrayLit of sexpr list
   | SId of string
   | SUnaop of unaop * sexpr
@@ -62,6 +62,7 @@ let rec string_of_sexpr (t, e) =
   | SBoolLit (true) -> "true"
   | SBoolLit (false) -> "false"
   | SFloatLit (f) -> string_of_float f
+  | SStructLit (assign_list) -> "{ " ^ String.concat ", " (List.map string_of_sdot_assign assign_list) ^ " }"
   | SStrLit (s) -> "\"" ^ String.escaped s ^ "\""
   | SArrayLit (a) -> let rec string_of_list a = match a with
         [] -> ""
@@ -77,6 +78,9 @@ let rec string_of_sexpr (t, e) =
   | SAccessMember (e1, e2) -> string_of_sexpr e1 ^ "." ^ string_of_sexpr e2
   | SAccessEle (e1, e2) -> string_of_sexpr e1 ^ "[" ^ string_of_sexpr e2 ^ "]") ^ 
   ")"
+
+and string_of_sdot_assign = function
+| (l, r) ->  "." ^ l ^ " = " ^ (string_of_sexpr r)
 
 and string_of_snewable = function
   | SNewStruct (s) -> "new " ^ s
