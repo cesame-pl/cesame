@@ -39,7 +39,7 @@ open Ast
 
 /* add function declarations*/
 program:
-  stmt_list EOF { $1 }
+  sdecl_list stmt_list EOF {($1, $2)}
 
 // decls:
 //   /* nothing */      { ([], [])                 }
@@ -64,7 +64,7 @@ typ:
   | STRUCTID { Struct $1 }
   | ARRAY LT typ GT { Array $3 }
 
-/* fdef */
+/* function definition */
 fdef:
   vdecl LPAREN params_opt RPAREN LBRACE stmt_list RBRACE
   {
@@ -75,6 +75,14 @@ fdef:
       body=$6
     })
   }
+
+/* struct declaration */
+sdecl:
+  STRUCT STRUCTID LBRACE vdecl_list RBRACE SEMI { {sname = $2; body = $4} }
+
+sdecl_list:
+  /* nothing */  { [] }
+  | sdecl sdecl_list  { $1 :: $2 }
 
 /* params_opt */
 params_opt:
@@ -95,7 +103,6 @@ stmt:
   | LBRACE stmt_list RBRACE                 { Block $2 }
   | typ ID ASSIGN expr SEMI                 { VDecl($1, $2, Some($4)) }
   | typ ID SEMI                             { VDecl($1, $2, None) }
-  | STRUCT STRUCTID LBRACE vdecl_list RBRACE SEMI { SDef($2, $4) }
   /* if (condition) { block1 } else { block2 } */
   /* if (condition) stmt else stmt */
   /* if (condition) stmt (elif stmt)+ NOELSE*/
@@ -122,6 +129,14 @@ ifelifstmt:
     IF LPAREN expr RPAREN stmt              { [($3, $5)] }
   | ifelifstmt ELIF LPAREN expr RPAREN stmt { ($4, $6)::$1 }
 
+// /* For struct lit */
+dot_assign:
+   DOT ID ASSIGN expr { ($2, $4) }
+dot_assign_list:
+  /* nothing */     { [] }
+  | dot_assign      {[$1]}
+  | dot_assign COMMA dot_assign_list { $1::$3 }
+
 expr:
     LITERAL          { Literal($1)            }
   | CLIT             { CharLit($1)            }
@@ -129,6 +144,7 @@ expr:
   | FLIT             { FloatLit($1)           }
   | STRLIT           { StrLit($1)             }
   | LSQBRACE elements RSQBRACE { ArrayLit($2) }
+  | LBRACE dot_assign_list RBRACE { StructLit($2) }
   | lvalue           { $1                     }
   | lvalue ASSIGN expr { Assign($1, $3)       }
   | lvalue INC       { Assign($1, Binop($1, Add, Literal(1))) }

@@ -15,7 +15,7 @@ all : clean cesame test
 cesame : 
 	make -C $(LIB_DIR) printbig.o
 	make -C $(SRC_DIR) cesame
-	cp $(SRC_DIR)/cesame cesame
+	mv $(SRC_DIR)/cesame cesame
 
 .PHONY : clean
 clean :
