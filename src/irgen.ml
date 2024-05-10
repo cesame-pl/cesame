@@ -30,31 +30,13 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   in
 
   (* Return LLVM type for sast type *)
-  let ltype_of_typ = function
-      Int    -> i32_t
-    | Float  -> f64_t
-    | Bool   -> bool_t
-    | Char   -> char_t
-    | String -> char_pt
-  in
-
-  (* Function to determine the size of an array *)
-  (* Takes sx as SArrayList l *)
-  let size_of_arr = function
-        SArrayLit l -> List.length l
-      | _ -> raise (Failure "Excepted an array")
-  in
-  (* Recursive function to determine the LLVM type of an array *)
-  (* Takes in sexpr *)
-  let rec ltype_of_arr (t, sx) = 
-    match t, sx with 
-    | (Array el_type, SArrayLit l) (* element_type *) -> 
-      let size = size_of_arr sx in 
-      if size = 0 then 
-        L.array_type (ltype_of_typ el_type) 0 
-      else (* assume all the elements have the same size *)
-        L.array_type (ltype_of_arr (List.hd l)) size
-    | _ -> ltype_of_typ t
+  let rec ltype_of_typ = function
+      Int     -> i32_t
+    | Float   -> f64_t
+    | Bool    -> bool_t
+    | Char    -> char_t
+    | String  -> char_pt
+    | Array t -> L.pointer_type (ltype_of_typ t)
   in
 
   (* Function to add a terminal instruction *)
@@ -91,19 +73,15 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     | SFloatLit (f)   -> L.const_float f64_t f
     | SStrLit (s)     -> L.build_global_stringptr s "str" builder
     | SArrayLit (l)   -> 
-      let arr_size = size_of_arr sx in 
-      let arr_ptr = L.build_alloca (ltype_of_arr (t, sx)) "arr" builder in 
+      let arr_size = List.length l and arr_type = ltype_of_typ t in
+      let arr_alloca = L.build_array_malloc arr_type (L.const_int i32_t arr_size) "arr" builder in
+      let arr_ptr = L.build_pointercast arr_alloca arr_type "arr_ptr" builder in
       for i = 0 to arr_size - 1 do 
-        let el_ptr = L.build_in_bounds_gep arr_ptr [|L.const_int i32_t 0; L.const_int i32_t i|] "tmp" builder in
+        let el_ptr = L.build_in_bounds_gep arr_ptr [|L.const_int i32_t i|] "tmp" builder in
         let el_val = build_expr vars func_decls builder (List.nth l i) in
-        let el_val_casted = 
-          match L.type_of el_val with
-          | lltype when lltype = L.pointer_type (L.element_type (ltype_of_arr (t, sx))) -> L.build_load el_val "tmp" builder
-          | _ -> el_val
-        in
-        ignore (L.build_store el_val_casted el_ptr builder)
+        ignore (L.build_store el_val el_ptr builder)
       done;
-      arr_ptr;
+      arr_ptr
     | SId (s)         -> L.build_load (var_addr_lookup vars func_decls builder sx) s builder
     | SUnaop (op, se) ->
       let e' = build_expr vars func_decls builder se in 
@@ -169,11 +147,9 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       L.build_call func_ptr (Array.of_list func_args) (f ^ "_result") builder
     | SAccessEle (se1, se2) -> 
       (* TODO: test more complicated se like student.courses[0] *)
-      let e1' = (match se1 with 
-          _, SId s -> build_expr vars func_decls builder se1
-        | _, _-> var_addr_lookup vars func_decls builder (snd se1)) in 
+      let e1' = L.build_load (var_addr_lookup vars func_decls builder (snd se1)) "tmp" builder in  
       let e2' = build_expr vars func_decls builder se2 in 
-      let el_ptr = L.build_in_bounds_gep e1' [|L.const_int i32_t 0; e2'|] "tmp" builder in 
+      let el_ptr = L.build_in_bounds_gep e1' [|e2'|] "tmp" builder in 
       L.build_load el_ptr "tmp" builder
 
   (* Helper function to look up variable from both the global and local scope (local first) *)
@@ -181,12 +157,14 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   and var_addr_lookup vars func_decls builder sx : L.llvalue = 
     (match sx with 
       SId (s) -> StringMap.find s vars
-    | SAccessEle (se1, se2) ->
+    | SAccessEle (se1, se2) -> 
       let e1' = (match se1 with 
-          _, SId s -> build_expr vars func_decls builder se1
-        | _, _-> var_addr_lookup vars func_decls builder (snd se1)) in
-      let e2' = build_expr vars func_decls builder se2 in 
-      L.build_in_bounds_gep e1' [|L.const_int i32_t 0; e2'|] "tmp" builder)
+        | _, SId s -> 
+          L.build_load (var_addr_lookup vars func_decls builder (snd se1)) "tmp" builder
+        | _, _ -> 
+          build_expr vars func_decls builder se1) in
+      let e2' = build_expr vars func_decls builder se2 in
+      L.build_in_bounds_gep e1' [|e2'|] "tmp" builder)
     (* TODO: AccessMember *)
   (* Helper function to look up functions from both the global and local scope (local first) *)
   (* Takes string; Returns llvalue *)
@@ -217,12 +195,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       (new_locals, local_func_decls, builder)
     
     | SVDecl (t, var_name, Some (rt, re)) -> (* right type and right expression *)
-      let ltype = match t with 
-        (* TODO: ADD functions *)
-          Array _ -> L.pointer_type (ltype_of_arr (rt, re))
-        | _ -> ltype_of_typ rt
-      in
-      let lhs_addr = L.build_alloca ltype var_name builder in
+      let lhs_addr = L.build_alloca (ltype_of_typ rt) var_name builder in
       let new_locals = StringMap.add var_name lhs_addr locals in (* Add var_name -> var_addr to the map *)
       let e' = build_expr vars func_decls builder (rt, re) in
       ignore(L.build_store e' lhs_addr builder);
