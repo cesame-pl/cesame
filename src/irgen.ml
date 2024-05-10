@@ -34,7 +34,16 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   let struct_lookup name = 
     try Hashtbl.find struct_tbl name 
       with Not_found -> raise (Failure ("Struct type '" ^ name ^ "' not found"))
-  in 
+  in
+  let struct_member_index member_name struct_decl =
+    let rec find_index index = function
+      | [] -> raise (Failure ("Struct member '" ^ member_name ^ "' not found")) (* Member not found *)
+      | (_, name) :: rest ->
+          if name = member_name then index (* Return the index if the member is found *)
+          else find_index (index + 1) rest
+    in
+    find_index 0 struct_decl.body
+  in
 
   (* Return LLVM type for sast type *)
   let rec ltype_of_typ = function
@@ -166,46 +175,34 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let func_ptr = func_addr_lookup func_decls f in 
       let func_args = List.rev (List.map (build_expr vars func_decls builder) (List.rev sel)) in
       L.build_call func_ptr (Array.of_list func_args) (f ^ "_result") builder
-    | SAccessMember ((Struct sname, SId s1), (_, SId s2)) -> 
-      (* TODO: recursive type *)
-      (* let e1' = build_expr vars func_decls builder se1 in  *)
-      (* let e2' = build_expr vars func_decls builder se2 in  *)
-      let (_, struct_decl) = struct_lookup sname in
-      let struct_ptr = var_addr_lookup vars func_decls builder (SId s1) in 
-      let get_member_index member_name =
-        let rec find_index index = function
-          | [] -> raise Not_found (* Member not found *)
-          | (_, name) :: rest ->
-              if name = member_name then index (* Return the index if the member is found *)
-              else find_index (index + 1) rest
-        in
-        find_index 0 struct_decl.body
-      in
-      let member_index = get_member_index s2 in 
-      let member_ptr = L.build_struct_gep struct_ptr member_index "" builder in 
-      L.build_load member_ptr "tmp" builder
-
-    | SAccessEle (se1, se2) -> 
-      (* TODO: test more complicated se like student.courses[0] *)
-      let e1' = L.build_load (var_addr_lookup vars func_decls builder (snd se1)) "tmp" builder in  
-      let e2' = build_expr vars func_decls builder se2 in 
-      let el_ptr = L.build_in_bounds_gep e1' [|e2'|] "tmp" builder in 
-      L.build_load el_ptr "tmp" builder
+    | SAccessMember _ | SAccessEle _ -> 
+      let sub_ptr = var_addr_lookup vars func_decls builder sx in 
+      L.build_load sub_ptr "tmp" builder
 
   (* Helper function to look up variable from both the global and local scope (local first) *)
   (* Takes sx; Returns llvalue *)
   and var_addr_lookup vars func_decls builder sx : L.llvalue = 
     (match sx with 
       SId (s) -> StringMap.find s vars
+    | SAccessMember ((Struct sname, sx1), (_, SId s2)) -> 
+      let (_, struct_decl) = struct_lookup sname in
+      let struct_ptr = (match sx1 with 
+        | SId s -> 
+          var_addr_lookup vars func_decls builder sx1
+        | _ -> 
+          build_expr vars func_decls builder (Struct sname, sx1))
+      in
+      let member_index = struct_member_index s2 struct_decl in 
+      L.build_struct_gep struct_ptr member_index "tmp" builder 
     | SAccessEle (se1, se2) -> 
       let e1' = (match se1 with 
         | _, SId s -> 
           L.build_load (var_addr_lookup vars func_decls builder (snd se1)) "tmp" builder
         | _, _ -> 
-          build_expr vars func_decls builder se1) in
+          build_expr vars func_decls builder se1) 
+      in
       let e2' = build_expr vars func_decls builder se2 in
       L.build_in_bounds_gep e1' [|e2'|] "tmp" builder)
-    (* TODO: AccessMember *)
   (* Helper function to look up functions from both the global and local scope (local first) *)
   (* Takes string; Returns llvalue *)
   and func_addr_lookup func_decls fname : L.llvalue = StringMap.find fname func_decls 
