@@ -72,6 +72,8 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     | _      -> raise (Failure "Unsupported type for print")
   in
 
+  let func_of_builder builder = L.block_parent (L.insertion_block builder) in
+
   (* Declaration of printf function *)
   let printf_t : L.lltype = 
     L.var_arg_function_type i32_t [| L.pointer_type char_t |] in
@@ -80,7 +82,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
 
   (* Recursive function to build LLVM IR for expressions *)
   (* Takes in an sexpr; Returns Llvalue *)
-  let rec build_expr globals locals builder ((t, sx) : sexpr) : L.llvalue =
+  let rec build_expr vars func_decls builder ((t, sx) : sexpr) : L.llvalue =
     match sx with
       Noexpr          -> L.const_int i32_t 0
     | SLiteral (i)    -> L.const_int i32_t i
@@ -93,20 +95,20 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let arr_ptr = L.build_alloca (ltype_of_arr (t, sx)) "arr" builder in 
       for i = 0 to arr_size - 1 do 
         let el_ptr = L.build_in_bounds_gep arr_ptr [|L.const_int i32_t 0; L.const_int i32_t i|] "tmp" builder in
-        let el_val = build_expr globals locals builder (List.nth l i) in
+        let el_val = build_expr vars func_decls builder (List.nth l i) in
         ignore (L.build_store el_val el_ptr builder)
       done;
       arr_ptr;
-    | SId (s)         -> L.build_load (var_addr_lookup globals locals builder sx) s builder
+    | SId (s)         -> L.build_load (var_addr_lookup vars func_decls builder sx) s builder
     | SUnaop (op, se) ->
-      let e' = build_expr globals locals builder se in 
+      let e' = build_expr vars func_decls builder se in 
       (match op with 
         Not -> L.build_not e' "tmp" builder)
     | SBinop (se1, op, se2) ->
       (* check if se1 and se2 are valid in semant *)
       (* print_string (string_of_sexpr((t,  SBinop(se1, op, se2)))); *)
-      let e1' = build_expr globals locals builder se1 in
-      let e2' = build_expr globals locals builder se2 in
+      let e1' = build_expr vars func_decls builder se1 in
+      let e2' = build_expr vars func_decls builder se2 in
       let err = "Unsupported binary operation for this type" in
       (match fst se1 with
         Bool -> 
@@ -150,38 +152,50 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
         | Lt    -> L.build_fcmp L.Fcmp.Olt) 
       | _ -> raise (Failure err)) e1' e2' "tmp" builder
     | SAssign (se1, se2) -> 
-      let e1' = var_addr_lookup globals locals builder (snd se1) in 
-      let e2' = build_expr globals locals builder se2 in
+      let e1' = var_addr_lookup vars func_decls builder (snd se1) in 
+      let e2' = build_expr vars func_decls builder se2 in
       ignore(L.build_store e2' e1' builder); e2'
     | SCall ("print", [se]) ->
       let printf_format = L.build_global_stringptr (fmt_str_of_typ (fst se)) "fmt" builder in
-      L.build_call printf_func [| printf_format; (build_expr globals locals builder se) |] "printf" builder
+      L.build_call printf_func [| printf_format; (build_expr vars func_decls builder se) |] "printf" builder
+    | SCall (f, sel) -> (* fname: string, args: se list *)
+      let func_ptr = func_addr_lookup func_decls f in 
+      let func_args = List.rev (List.map (build_expr vars func_decls builder) (List.rev sel)) in
+      L.build_call func_ptr (Array.of_list func_args) (f ^ "_result") builder
+
     | SAccessEle (se1, se2) -> 
       (* TODO: test more complicated se like student.courses[0] *)
-      let e1' = build_expr globals locals builder se1 in 
-      let e2' = build_expr globals locals builder se2 in 
+      let e1' = build_expr vars func_decls builder se1 in 
+      let e2' = build_expr vars func_decls builder se2 in 
       let el_ptr = L.build_in_bounds_gep e1' [|L.const_int i32_t 0; e2'|] "tmp" builder in 
       L.build_load el_ptr "tmp" builder
 
   (* Helper function to look up variable from both the global and local scope (local first) *)
-  (* Takes in sx; Returns llvalue *)
-  and var_addr_lookup globals locals builder sx : L.llvalue = 
-    match sx with 
-      SId (s) -> 
-      (try StringMap.find s locals
-        with Not_found -> StringMap.find s globals)
+  (* Takes sx; Returns llvalue *)
+  and var_addr_lookup vars func_decls builder sx : L.llvalue = 
+    (match sx with 
+      SId (s) -> StringMap.find s vars
     | SAccessEle (se1, se2) ->
-      let e1' = build_expr globals locals builder se1 in 
-      let e2' = build_expr globals locals builder se2 in 
-      L.build_in_bounds_gep e1' [|L.const_int i32_t 0; e2'|] "tmp" builder
+      let e1' = build_expr vars func_decls builder se1 in 
+      let e2' = build_expr vars func_decls builder se2 in 
+      L.build_in_bounds_gep e1' [|L.const_int i32_t 0; e2'|] "tmp" builder)
     (* TODO: AccessMember *)
-  in 
+  (* Helper function to look up functions from both the global and local scope (local first) *)
+  (* Takes string; Returns llvalue *)
+  and func_addr_lookup func_decls fname : L.llvalue = StringMap.find fname func_decls 
+  in
 
   (* Recursive function to build LLVM IR for statements *)
-  let rec build_stmt globals locals builder lfunc = function
+  let rec build_stmt globals locals global_func_decls local_func_decls builder sexpr = 
+    (* globals and locals won't change after being combined *)
+    (* vars: all variables; func_decls: all functions declarations *)
+    let vars = combine_maps globals locals and func_decls = combine_maps global_func_decls local_func_decls in
+
+    match sexpr with 
       SExpr (se) -> 
-      ignore(build_expr globals locals builder se); 
-      (locals, builder)
+      ignore(build_expr vars func_decls builder se); 
+      (locals, local_func_decls, builder)
+    
     (* If it's a declaration, insert it into the locals. The bind is the first element of locals *)
     (* Why do we need local_func_decls here? *)
     (* TODO: If t is a Func type? *)
@@ -192,7 +206,8 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       in
       (* Add var_name -> var_addr to the map *)
       let new_locals = StringMap.add var_name lhs_addr locals in 
-      (new_locals, builder)
+      (new_locals, local_func_decls, builder)
+    
     | SVDecl (t, var_name, Some (rt, re)) -> (* right type and right expression *)
       let ltype = match t with 
         (* TODO: ADD functions *)
@@ -201,41 +216,45 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       in
       let lhs_addr = L.build_alloca ltype var_name builder in
       let new_locals = StringMap.add var_name lhs_addr locals in (* Add var_name -> var_addr to the map *)
-      let e' = build_expr globals locals builder (rt, re) in
+      let e' = build_expr vars func_decls builder (rt, re) in
       ignore(L.build_store e' lhs_addr builder);
-      (new_locals, builder)
+      (new_locals, local_func_decls, builder)
+
     | SBlock (sstmt_l) -> 
-      let new_builder = build_stmt_list (combine_maps globals locals) StringMap.empty builder lfunc sstmt_l in 
-      (locals, new_builder)
+      let new_builder = build_stmt_list vars StringMap.empty func_decls StringMap.empty builder sstmt_l in 
+      (locals, local_func_decls, new_builder)
+
     | SIf (se_sst_l, sst) -> 
       let rec build_if globals locals builder = function
           ([] , sst) -> 
-          let (_, new_builder) = build_stmt globals locals builder lfunc sst in 
+          let (_, _, new_builder) = build_stmt globals locals global_func_decls local_func_decls builder sst in 
           new_builder 
         | ((fse, then_sst) :: else_sl, sst) -> 
-          let bool_val = build_expr globals locals builder fse in 
-          let merge_bb = L.append_block context "merge" lfunc in 
+          let bool_val = build_expr vars func_decls builder fse in 
+          let merge_bb = L.append_block context "merge" (func_of_builder builder) in 
           let b_br_merge = L.build_br merge_bb in 
-          let then_bb = L.append_block context "then" lfunc in 
-          let (_, then_stmt_builder) = build_stmt globals locals (L.builder_at_end context then_bb) lfunc then_sst in 
+          let then_bb = L.append_block context "then" (func_of_builder builder) in 
+          let (_, _, then_stmt_builder) = build_stmt globals locals global_func_decls local_func_decls (L.builder_at_end context then_bb) then_sst in 
           add_terminal then_stmt_builder b_br_merge; 
-          let else_bb = L.append_block context "else" lfunc in 
+          let else_bb = L.append_block context "else" (func_of_builder builder) in 
           let else_stmt_builer = build_if globals locals (L.builder_at_end context else_bb) (else_sl, sst) in 
           add_terminal else_stmt_builer b_br_merge;
           ignore(L.build_cond_br bool_val then_bb else_bb builder);
           L.builder_at_end context merge_bb
       in
-      (locals, build_if globals locals builder (List.rev se_sst_l, sst))
+      (locals, local_func_decls, build_if globals locals builder (List.rev se_sst_l, sst))
+
     | SWhile (se, sst) -> 
-      let pred_bb = L.append_block context "while" lfunc in 
+      let pred_bb = L.append_block context "while" (func_of_builder builder) in 
       ignore(L.build_br pred_bb builder);
-      let body_bb = L.append_block context "while_body" lfunc in 
-      let (_, while_body_builder) = build_stmt globals locals (L.builder_at_end context body_bb) lfunc sst in 
+      let body_bb = L.append_block context "while_body" (func_of_builder builder) in 
+      let (_, _, while_body_builder) = build_stmt globals locals global_func_decls local_func_decls (L.builder_at_end context body_bb) sst in 
       add_terminal while_body_builder (L.build_br pred_bb);
       let pred_builder = L.builder_at_end context pred_bb in 
-      let bool_val = build_expr globals locals pred_builder se in 
-      let merge_bb = L.append_block context "merge" lfunc in ignore(L.build_cond_br bool_val body_bb merge_bb pred_builder);
-      (locals, L.builder_at_end context merge_bb)
+      let bool_val = build_expr vars func_decls pred_builder se in 
+      let merge_bb = L.append_block context "merge" (func_of_builder builder) in ignore(L.build_cond_br bool_val body_bb merge_bb pred_builder);
+      (locals, local_func_decls, L.builder_at_end context merge_bb)
+
     | SFor (init, end_cond, trans_exp, sstmt_list) -> 
       let init_stmt = match init with 
           Some s -> s
@@ -248,13 +267,50 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let trans_stmt = match trans_exp with
           Some s -> s
         | None -> (Void, Noexpr) in 
-      build_stmt globals locals builder lfunc (SBlock([init_stmt; SWhile(end_cond_expr, SBlock([sstmt_list; SExpr(trans_stmt)]))]))
+      let new_block = SBlock([init_stmt; SWhile(end_cond_expr, SBlock([sstmt_list; SExpr(trans_stmt)]))]) in
+      build_stmt globals locals global_func_decls local_func_decls builder new_block
+    
+    | SFDef (fd) ->
+      (* TODO: array or struct as params *)
+      (* Define the function (arguments and return type) *)
+      let param_types = Array.of_list (List.map (fun (t,_) -> ltype_of_typ t) fd.sparams) in 
+      let ftype = L.function_type (ltype_of_typ fd.srtyp) param_types in 
+      let func_ptr = L.define_function fd.sfname ftype the_module in
+      let func_builder = L.builder_at_end context (L.entry_block func_ptr) in
+
+      (* Construct the function's globals & locals & func decls*)
+      let func_locals = 
+        let add_param m (t, n) p =
+          L.set_value_name n p;
+          let local = L.build_alloca (ltype_of_typ t) n func_builder in
+          ignore (L.build_store p local func_builder);
+          StringMap.add n local m
+        in
+        List.fold_left2 add_param StringMap.empty fd.sparams (Array.to_list (L.params func_ptr))
+      in
+      let func_local_func_decls = StringMap.add fd.sfname func_ptr StringMap.empty in
+
+      (* Build the function body *)
+      let new_builder = build_stmt_list vars func_locals func_decls func_local_func_decls func_builder fd.sbody in
+      let ret = (match fd.srtyp with 
+          Void -> L.build_ret_void 
+        | _ -> L.build_ret (L.const_int (ltype_of_typ fd.srtyp) 0) )
+      in
+      ignore(add_terminal new_builder ret);
+
+      (* Returns the original locals and builder, but new local func decls *)
+      let new_local_func_decls = StringMap.add fd.sfname func_ptr local_func_decls in
+      (locals, new_local_func_decls, builder)
+
+    | SReturn se -> 
+      ignore(L.build_ret (build_expr vars func_decls builder se) builder);
+      (locals, local_func_decls, builder)
   
-  and build_stmt_list globals locals builder lfunc = function (*lfunc is the function it belongs to, builder is the corresponding builder, sl is the last param *)
+  and build_stmt_list globals locals global_func_decls local_func_decls builder = function
       [] -> builder
     | s :: sl -> 
-      let (new_locals, new_builder) = build_stmt globals locals builder lfunc s
-      in build_stmt_list globals new_locals new_builder lfunc sl
+      let (new_locals, new_local_func_decls, new_builder) = build_stmt globals locals global_func_decls local_func_decls builder s in
+      build_stmt_list globals new_locals global_func_decls new_local_func_decls new_builder sl
   in
   
   (* Main block, the entry point of our program *)
@@ -268,13 +324,12 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   (* Variable map is a map from var name to var's addr (llvalue) *)
   (* We can use hashmap instead of StringMap for ease of mind *)
   (* Globals are vars outside of the current scope. Locals are inside the current scope *)
-  let globals = StringMap.empty in
-  let locals = StringMap.empty in
+  let globals = StringMap.empty and locals = StringMap.empty in
+  let global_func_decls = StringMap.empty and local_func_decls = StringMap.empty in
 
   let main = L.define_function "main" (L.function_type i32_t [||]) the_module in
   let builder = L.builder_at_end context (L.entry_block main) in
-  let (program_sdecl_list, program_stmt_list) = program in
-  let main_builder = build_stmt_list globals locals builder main program_stmt_list in
+  let main_builder = build_stmt_list globals locals global_func_decls local_func_decls builder (snd program) in
   let _ = add_terminal main_builder (L.build_ret (L.const_int i32_t 0)) in
 
   the_module
