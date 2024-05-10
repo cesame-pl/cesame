@@ -29,6 +29,13 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   and bool_t     = L.i1_type        context (* Bool    *)
   in
 
+  (* struct_tbl : { struct_name : (struct_type, struct_decl)}*)
+  let struct_tbl = Hashtbl.create 1000 in
+  let struct_lookup name = 
+    try Hashtbl.find struct_tbl name 
+      with Not_found -> raise (Failure ("Struct type '" ^ name ^ "' not found"))
+  in 
+
   (* Return LLVM type for sast type *)
   let rec ltype_of_typ = function
       Int     -> i32_t
@@ -37,7 +44,21 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     | Char    -> char_t
     | String  -> char_pt
     | Array t -> L.pointer_type (ltype_of_typ t)
+    | Struct s ->
+      let (_, sd) = struct_lookup s in
+      let el_types = Array.of_list (List.map (fun (t, _) -> ltype_of_typ t) sd.body) in
+      L.struct_type context el_types
   in
+  (* Return LLVM const value for ast type; Used in struct var init *)
+  let lconst_of_typ = function 
+    | Int -> L.const_int (ltype_of_typ Int) 0
+    | Float -> L.const_float (ltype_of_typ Float) 0.0
+    | Bool -> L.const_int (ltype_of_typ Bool) 0
+    | Char -> L.const_int (ltype_of_typ Char) 0
+    | String ->  L.const_stringz context ""
+    | Array t -> L.const_pointer_null (ltype_of_typ t)
+    | Struct _ -> L.const_pointer_null (L.struct_type context [||])
+  in 
 
   (* Function to add a terminal instruction *)
   let add_terminal builder instr =
@@ -145,6 +166,25 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let func_ptr = func_addr_lookup func_decls f in 
       let func_args = List.rev (List.map (build_expr vars func_decls builder) (List.rev sel)) in
       L.build_call func_ptr (Array.of_list func_args) (f ^ "_result") builder
+    | SAccessMember ((Struct sname, SId s1), (_, SId s2)) -> 
+      (* TODO: recursive type *)
+      (* let e1' = build_expr vars func_decls builder se1 in  *)
+      (* let e2' = build_expr vars func_decls builder se2 in  *)
+      let (_, struct_decl) = struct_lookup sname in
+      let struct_ptr = var_addr_lookup vars func_decls builder (SId s1) in 
+      let get_member_index member_name =
+        let rec find_index index = function
+          | [] -> raise Not_found (* Member not found *)
+          | (_, name) :: rest ->
+              if name = member_name then index (* Return the index if the member is found *)
+              else find_index (index + 1) rest
+        in
+        find_index 0 struct_decl.body
+      in
+      let member_index = get_member_index s2 in 
+      let member_ptr = L.build_struct_gep struct_ptr member_index "" builder in 
+      L.build_load member_ptr "tmp" builder
+
     | SAccessEle (se1, se2) -> 
       (* TODO: test more complicated se like student.courses[0] *)
       let e1' = L.build_load (var_addr_lookup vars func_decls builder (snd se1)) "tmp" builder in  
@@ -183,22 +223,18 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       (locals, local_func_decls, builder)
     
     (* If it's a declaration, insert it into the locals. The bind is the first element of locals *)
-    (* Why do we need local_func_decls here? *)
     (* TODO: If t is a Func type? *)
-    | SVDecl (t, var_name, None) -> 
-      let lhs_addr = match t with
-        (* TODO: ADD functions *)
-        | _ -> L.build_alloca (ltype_of_typ t) var_name builder
+    | SVDecl (t, var_name, se_opt) ->
+      let lhs_addr = match se_opt with
+          None -> 
+            L.build_alloca (ltype_of_typ t) var_name builder
+        | Some se -> (* right type and right expression *)
+            let addr = L.build_alloca (ltype_of_typ t) var_name builder in
+            let e' = build_expr vars func_decls builder se in
+            ignore(L.build_store e' addr builder);
+            addr
       in
-      (* Add var_name -> var_addr to the map *)
       let new_locals = StringMap.add var_name lhs_addr locals in 
-      (new_locals, local_func_decls, builder)
-    
-    | SVDecl (t, var_name, Some (rt, re)) -> (* right type and right expression *)
-      let lhs_addr = L.build_alloca (ltype_of_typ rt) var_name builder in
-      let new_locals = StringMap.add var_name lhs_addr locals in (* Add var_name -> var_addr to the map *)
-      let e' = build_expr vars func_decls builder (rt, re) in
-      ignore(L.build_store e' lhs_addr builder);
       (new_locals, local_func_decls, builder)
 
     | SBlock (sstmt_l) -> 
@@ -259,7 +295,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let func_ptr = L.define_function fd.sfname ftype the_module in
       let func_builder = L.builder_at_end context (L.entry_block func_ptr) in
 
-      (* Construct the function's globals & locals & func decls*)
+      (* Construct the function's globals & locals & func decls *)
       let func_locals = 
         let add_param m (t, n) p =
           L.set_value_name n p;
@@ -293,7 +329,30 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let (new_locals, new_local_func_decls, new_builder) = build_stmt globals locals global_func_decls local_func_decls builder s in
       build_stmt_list globals new_locals global_func_decls new_local_func_decls new_builder sl
   in
-  
+
+  (* Function to build global struct declarations list *)
+  let build_struct_decl_list struct_decls =
+    List.iter (fun sd ->
+      (* Define the struct type with a pointer to the array element *)
+      let el_types = List.map (fun (t, _) -> ltype_of_typ t) sd.body in
+      let struct_type = L.struct_type context (Array.of_list el_types) in
+      Hashtbl.add struct_tbl sd.sname (struct_type, sd);
+
+      (* Get the member init values *)
+      let null_initializer =
+        match sd.body with
+        | [] -> L.const_null struct_type
+        | _ :: _ -> 
+          let member_nulls = List.map (fun (t, _) -> lconst_of_typ t) sd.body in
+          L.const_named_struct struct_type (Array.of_list member_nulls)
+      in
+
+      (* Define a global variable of this struct type *)
+      let _ = L.define_global sd.sname null_initializer the_module in
+      ()
+    ) struct_decls
+  in
+
   (* Main block, the entry point of our program *)
   (* Define builder for the main program. It's what we refer to as main builder *)
   (* We prepare the globals and the locals hashtable for the main block. It starts with all empty. *)
@@ -309,6 +368,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   let global_func_decls = StringMap.empty and local_func_decls = StringMap.empty in
 
   let main = L.define_function "main" (L.function_type i32_t [||]) the_module in
+  let _ = build_struct_decl_list (fst program) in
   let builder = L.builder_at_end context (L.entry_block main) in
   let main_builder = build_stmt_list globals locals global_func_decls local_func_decls builder (snd program) in
   let _ = add_terminal main_builder (L.build_ret (L.const_int i32_t 0)) in
