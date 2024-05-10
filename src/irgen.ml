@@ -96,7 +96,12 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       for i = 0 to arr_size - 1 do 
         let el_ptr = L.build_in_bounds_gep arr_ptr [|L.const_int i32_t 0; L.const_int i32_t i|] "tmp" builder in
         let el_val = build_expr vars func_decls builder (List.nth l i) in
-        ignore (L.build_store el_val el_ptr builder)
+        let el_val_casted = 
+          match L.type_of el_val with
+          | lltype when lltype = L.pointer_type (L.element_type (ltype_of_arr (t, sx))) -> L.build_load el_val "tmp" builder
+          | _ -> el_val
+        in
+        ignore (L.build_store el_val_casted el_ptr builder)
       done;
       arr_ptr;
     | SId (s)         -> L.build_load (var_addr_lookup vars func_decls builder sx) s builder
@@ -162,10 +167,11 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let func_ptr = func_addr_lookup func_decls f in 
       let func_args = List.rev (List.map (build_expr vars func_decls builder) (List.rev sel)) in
       L.build_call func_ptr (Array.of_list func_args) (f ^ "_result") builder
-
     | SAccessEle (se1, se2) -> 
       (* TODO: test more complicated se like student.courses[0] *)
-      let e1' = build_expr vars func_decls builder se1 in 
+      let e1' = (match se1 with 
+          _, SId s -> build_expr vars func_decls builder se1
+        | _, _-> var_addr_lookup vars func_decls builder (snd se1)) in 
       let e2' = build_expr vars func_decls builder se2 in 
       let el_ptr = L.build_in_bounds_gep e1' [|L.const_int i32_t 0; e2'|] "tmp" builder in 
       L.build_load el_ptr "tmp" builder
@@ -176,7 +182,9 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     (match sx with 
       SId (s) -> StringMap.find s vars
     | SAccessEle (se1, se2) ->
-      let e1' = build_expr vars func_decls builder se1 in 
+      let e1' = (match se1 with 
+          _, SId s -> build_expr vars func_decls builder se1
+        | _, _-> var_addr_lookup vars func_decls builder (snd se1)) in
       let e2' = build_expr vars func_decls builder se2 in 
       L.build_in_bounds_gep e1' [|L.const_int i32_t 0; e2'|] "tmp" builder)
     (* TODO: AccessMember *)
