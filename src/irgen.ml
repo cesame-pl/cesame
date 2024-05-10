@@ -186,12 +186,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       SId (s) -> StringMap.find s vars
     | SAccessMember ((Struct sname, sx1), (_, SId s2)) -> 
       let (_, struct_decl) = struct_lookup sname in
-      let struct_ptr = (match sx1 with 
-        | SId s -> 
-          var_addr_lookup vars func_decls builder sx1
-        | _ -> 
-          build_expr vars func_decls builder (Struct sname, sx1))
-      in
+      let struct_ptr = var_addr_lookup vars func_decls builder sx1 in
       let member_index = struct_member_index s2 struct_decl in 
       L.build_struct_gep struct_ptr member_index "tmp" builder 
     | SAccessEle (se1, se2) -> 

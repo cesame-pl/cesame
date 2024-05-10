@@ -11,15 +11,23 @@ a.age = 22;
 a.courses = ["math", "history", "cs"];
 a.courses[0] = "french";
 
-/* Not yet supported */
-// b = new Student;
-Student b =  { .name = "Alice", .age = 24, .courses = ["PLT", "OS"] };
+Student b;
+b.name = "Alice";
+b.age = 24;
+b.courses = ["plt", "os", "database"];
 
 /* Not yet supported */
-Student c;
-c = { .name = "Bob", .age = 52 };
+// c = new Student;
+// Student c =  { .name = "Alice", .age = 24, .courses = ["PLT", "OS"] };
+
+/* Not yet supported */
+// Student d;
+// d = { .name = "Bob", .age = 52 };
 
 Array<Student> students = [a, b];
-String d = a.courses[1];
+for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 3; j++) {
+        print(students[i].courses[j]);
+    }
+}
 
-print(c);
