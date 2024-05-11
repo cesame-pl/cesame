@@ -158,38 +158,36 @@ dot_assign:
 
 /* expressions */
 expr:
-    LITERAL          { Literal($1)                }
-  | CLIT             { CharLit($1)                }
-  | BLIT             { BoolLit($1)                }
-  | FLIT             { FloatLit($1)               }
-  | STRLIT           { StrLit($1)                 }
-  | LSQBRACE elements RSQBRACE { ArrayLit($2)     }
-  | LBRACE dot_assign_list RBRACE { StructLit($2) }
-  | lvalue           { $1                         }
-  | lvalue ASSIGN expr { Assign($1, $3)           }
+    LITERAL          { Literal($1)                 }
+  | CLIT             { CharLit($1)                 }
+  | BLIT             { BoolLit($1)                 }
+  | FLIT             { FloatLit($1)                }
+  | STRLIT           { StrLit($1)                  }
+  | LSQBRACE elements RSQBRACE { New(ArrayLit($2)) }
+  | LBRACE dot_assign_list RBRACE { StructLit($2)  }
+  | lvalue           { $1                          }
+  | lvalue ASSIGN expr { Assign($1, $3)            }
   | lvalue INC       { Assign($1, Binop($1, Add, Literal(1))) }
   | lvalue DEC       { Assign($1, Binop($1, Sub, Literal(1))) }
-  | NOT expr         { Unaop(Not, $2)             }
-  | expr MUL    expr { Binop($1, Mul,   $3)       }
-  | expr DIV    expr { Binop($1, Div,   $3)       }
-  | expr MOD    expr { Binop($1, Mod,   $3)       }
-  | expr PLUS   expr { Binop($1, Add,   $3)       }
-  | expr MINUS  expr { Binop($1, Sub,   $3)       }
-  | expr GE     expr { Binop($1, Ge,    $3)       }
-  | expr LE     expr { Binop($1, Le,    $3)       }
-  | expr GT     expr { Binop($1, Gt,    $3)       }
-  | expr LT     expr { Binop($1, Lt,    $3)       }
-  | expr EQ     expr { Binop($1, Equal, $3)       }
-  | expr NEQ    expr { Binop($1, Neq,   $3)       }
-  | expr AND    expr { Binop($1, And,   $3)       }
-  | expr OR     expr { Binop($1, Or,    $3)       }
-  | LPAREN expr RPAREN { $2                       }
+  | NOT expr         { Unaop(Not, $2)              }
+  | expr MUL    expr { Binop($1, Mul,   $3)        }
+  | expr DIV    expr { Binop($1, Div,   $3)        }
+  | expr MOD    expr { Binop($1, Mod,   $3)        }
+  | expr PLUS   expr { Binop($1, Add,   $3)        }
+  | expr MINUS  expr { Binop($1, Sub,   $3)        }
+  | expr GE     expr { Binop($1, Ge,    $3)        }
+  | expr LE     expr { Binop($1, Le,    $3)        }
+  | expr GT     expr { Binop($1, Gt,    $3)        }
+  | expr LT     expr { Binop($1, Lt,    $3)        }
+  | expr EQ     expr { Binop($1, Equal, $3)        }
+  | expr NEQ    expr { Binop($1, Neq,   $3)        }
+  | expr AND    expr { Binop($1, And,   $3)        }
+  | expr OR     expr { Binop($1, Or,    $3)        }
+  | LPAREN expr RPAREN { $2                        }
   /* function call */
   /* todo: function call can be a lvalue */
-  | ID LPAREN args_opt RPAREN { Call ($1, $3)     }
-  | anondef          { $1                         }
-  /* new object, like "new Student {1, 2}", or simply "new Student", although it's a expr, it should not be used alone (without being assigned to some variable) */
-  | NEW STRUCTID     { New(NewStruct $2)          }
+  | ID LPAREN args_opt RPAREN { Call ($1, $3)      }
+  | anondef          { $1                          }
 
 lvalue:
     ID { Id $1 }

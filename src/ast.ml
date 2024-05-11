@@ -3,7 +3,7 @@
 type unaop = Not
 type binop = Add | Sub | Mul | Div | Mod | Equal | Neq | Ge | Le | Gt | Lt | And | Or
 
-type typ = Int | Char | Bool | Float | String | Void 
+type typ = Void | Char | Bool | Int | Float | String
   | Array of typ
   | Struct of string (* for example struct "Shape" *)
   | Func of typ list * typ
@@ -13,13 +13,14 @@ type bind = typ * string
 
 type expr =
     Noexpr
-  | Literal of int
   | CharLit of char
   | BoolLit of bool
+  | Literal of int
   | FloatLit of float
   | StrLit of string
+  (* For struct object, Student a = new Student {name = "abc", age = 10}, not yet supported *)
   | StructLit of (string * expr) list
-  | ArrayLit of expr list
+  | New of newable (* New(ArrayLit(...)) *)
   | AnonFunc of func_def (* Name is empty *)
   | Id of string (* These are constructors; We can use Id(some_string) to construction a expr *)
   | Unaop of unaop * expr
@@ -27,17 +28,14 @@ type expr =
   | Assign of expr * expr
   (* function call, myFunc(5, 3); *)
   | Call of string * expr list
-  | New of newable (* New(NewStruct(...)) *)
   (* access member of a struct *)
   | AccessMember of expr * expr (* "a.name" "a[1].name" *)
   (* access element of an array *)
   | AccessEle of expr * expr (* "a[1]" "a[0][1]" *)
 
-(* "new Student" is an expression, "new Student {xxx} not yet supported " *)
 and newable =
-  NewStruct of string (* new struct object, "new Student {name = "abc", age = 10}" not yet supported, we're thinking whether to use expr list option or a new type to define the body *)
+  ArrayLit of expr list
   (* | NewFunc TODO *)
-(* For new struct object, Student a = new Student {name = "abc", age = 10}, not yet supported *)
 
 (* int x; is a bind or a expr (VDecl), but int x = 1; is a statement. *)
 and stmt =
@@ -83,50 +81,55 @@ let remove_last s =
 
 let string_of_unaop = function
     Not   -> "!"
+
 let string_of_binop = function
     Add   -> "+"
   | Sub   -> "-"
   | Mul   -> "*"
   | Div   -> "/"
   | Mod   -> "%"
+  | Equal -> "=="
+  | Neq   -> "!="
   | Ge    -> ">="
   | Le    -> "<="
   | Gt    -> ">"
   | Lt    -> "<"
-  | Equal -> "=="
-  | Neq   -> "!="
   | And   -> "&&"
   | Or    -> "||"
 
 let rec string_of_typ = function
-    Int -> "int"
-  | Char -> "char"
-  | Bool -> "bool"
-  | String -> "String"
-  | Array (t) -> "Array<" ^ string_of_typ t ^ ">"
-  | Float -> "float"
-  | Struct (s) -> s;
-  | Void -> ""
+    Void        -> ""
+  | Char        -> "char"
+  | Bool        -> "bool"
+  | Int         -> "int"
+  | Float       -> "float"
+  | String      -> "String"
+  | Array (t)   -> "Array<" ^ string_of_typ t ^ ">"
+  | Struct (s)  -> s
   | Func(tl, t) -> 
-  "Func (" ^ String.concat ", " (List.map string_of_typ tl) ^ ") -> " ^ string_of_typ t
+    "Func (" ^ String.concat ", " (List.map string_of_typ tl) ^ ") -> " ^ string_of_typ t
 
-let string_of_bind (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
+let string_of_bind (t, id) = 
+  string_of_typ t ^ " " ^ id ^ ";\n"
 let string_of_bind_list l = 
   String.concat "" (List.map string_of_bind l)
 
-let string_of_struct_decl decl = "struct " ^ decl.sname ^ "\n{\n" ^ string_of_bind_list decl.body  ^ "}\n"
+let string_of_struct_decl decl = 
+  "struct " ^ decl.sname ^ "\n{\n" ^ string_of_bind_list decl.body  ^ "}\n"
 let string_of_struct_decl_list l = 
   String.concat "" (List.map string_of_struct_decl l)
 
 let rec string_of_expr = function
     Noexpr -> ""
-  | Literal (l) -> string_of_int l
   | CharLit (c) -> "'" ^ Char.escaped c ^ "'"
   | BoolLit (true) -> "true"
   | BoolLit (false) -> "false"
+  | Literal (l) -> string_of_int l
   | FloatLit (f) -> string_of_float f
   | StrLit (s) -> "\"" ^ String.escaped s ^ "\""
-  | ArrayLit (a) ->  
+  | StructLit (assign_list) ->
+    "{ " ^ String.concat ", " (List.map string_of_dot_assign assign_list) ^ " }"
+  | New(ArrayLit (a)) ->  
     let rec string_of_list a = match a with
         [] -> ""
       | [element] -> string_of_expr element
@@ -135,21 +138,16 @@ let rec string_of_expr = function
   | AnonFunc (f) ->
     "(" ^ String.concat ", " (List.map snd f.params) ^ ") -> " ^ 
     (string_of_typ f.rtyp) ^ " " ^ remove_last (string_of_stmt(Block(f.body)))
-  | StructLit (assign_list) ->
-    "{ " ^ String.concat ", " (List.map string_of_dot_assign assign_list) ^ " }"
   | Id (s) -> s
   | Unaop (o, e) -> string_of_unaop o ^ string_of_expr e
   | Binop (e1, o, e2) -> string_of_expr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_expr e2
   | Assign (e1, e2) -> string_of_expr e1 ^ " = " ^ string_of_expr e2
   | Call (f, el) -> f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
-  | New (n) -> string_of_newable n
   | AccessMember (e1, e2) -> string_of_expr e1 ^ "." ^ string_of_expr e2
   | AccessEle (e1, e2) -> string_of_expr e1 ^ "[" ^ string_of_expr e2 ^ "]"
 
 and string_of_dot_assign = function
   | (l, r) ->  "." ^ l ^ " = " ^ (string_of_expr r)
-and string_of_newable = function
-  | NewStruct(s) -> "new " ^ s
 
 (* Here, string_of_stmt, string_of_stmt_list, ..., string_of_fdef are all mutually recursive *)
 and string_of_stmt = function

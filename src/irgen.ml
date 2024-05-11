@@ -96,13 +96,13 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   (* Takes in an sexpr; Returns Llvalue *)
   let rec build_expr vars func_decls builder ((t, sx) : sexpr) : L.llvalue =
     match sx with
-      Noexpr          -> L.const_int i32_t 0
-    | SLiteral (i)    -> L.const_int i32_t i
-    | SCharLit (c)    -> L.const_int (ltype_of_typ Char) (Char.code c)
-    | SBoolLit (b)    -> L.const_int bool_t (if b then 1 else 0)
-    | SFloatLit (f)   -> L.const_float f64_t f
-    | SStrLit (s)     -> L.build_global_stringptr s "str" builder
-    | SArrayLit (l)   -> 
+      Noexpr              -> L.const_int i32_t 0
+    | SLiteral (i)        -> L.const_int i32_t i
+    | SCharLit (c)        -> L.const_int (ltype_of_typ Char) (Char.code c)
+    | SBoolLit (b)        -> L.const_int bool_t (if b then 1 else 0)
+    | SFloatLit (f)       -> L.const_float f64_t f
+    | SStrLit (s)         -> L.build_global_stringptr s "str" builder
+    | SNew(SArrayLit (l)) -> 
       let arr_size = List.length l and arr_type = ltype_of_typ t in
       let arr_alloca = L.build_array_malloc arr_type (L.const_int i32_t arr_size) "arr" builder in
       let arr_ptr = L.build_pointercast arr_alloca arr_type "arr_ptr" builder in

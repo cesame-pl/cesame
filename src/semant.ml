@@ -124,7 +124,7 @@ let rec check_expr e struct_map bind_list func_decl_list =
       List.map (fun (ty, ex)-> (ty, check_expr ex struct_map bind_list func_decl_list))
     dot_assigns_list)
    ) (*StructLit's type can't be determined yet, so void *)
-  | ArrayLit l -> (* l is an expression list *)
+  | New(ArrayLit l) -> (* l is an expression list *)
     let rec check_array_helper l prev_typ =
       match l with
         [] -> prev_typ
@@ -139,8 +139,8 @@ let rec check_expr e struct_map bind_list func_decl_list =
     in 
     let check_array l = 
       match l with 
-        [] -> (Array(Void), SArrayLit [])
-      | hd :: tl -> (Array(check_array_helper l (fst (check_expr hd struct_map bind_list func_decl_list))), SArrayLit (List.map (fun x -> check_expr x struct_map bind_list func_decl_list) l))
+        [] -> (Array(Void), SNew(SArrayLit []))
+      | hd :: tl -> (Array(check_array_helper l (fst (check_expr hd struct_map bind_list func_decl_list))), SNew(SArrayLit (List.map (fun x -> check_expr x struct_map bind_list func_decl_list) l)))
     in 
     check_array l
   | Id var -> (type_of_identifier var symbols, SId var)
@@ -391,7 +391,6 @@ and check_stmt struct_map globals locals global_func_decls local_func_decls rtyp
                       " expected " ^ string_of_typ rtyp ^ " in " ^ string_of_expr e))
   | Break -> if in_loop then (locals, local_func_decls, SBreak) else raise(Failure("The break statement is not in a loop\n"))
   | Continue -> if in_loop then (locals, local_func_decls, SContinue) else raise(Failure("The continue statement is not in a loop\n"))
-  | _ -> raise (Failure ("TODO:\n" ^ string_of_stmt stmt))
 
 (* Entry point for the semantic checker *)
 let check (struct_decls, stmts) = 
