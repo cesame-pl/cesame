@@ -51,7 +51,6 @@ vdecl_list:
   | vdecl SEMI vdecl_list  { $1 :: $3 }
 
 /* int x */
-/* TODO: support int x = 1; */
 vdecl:
   typ ID { ($1, $2) } /* of type "bind", for function definition and vdecl outside of function */
 
@@ -63,6 +62,13 @@ typ:
   | STRING { String }
   | STRUCTID { Struct $1 }
   | ARRAY LT typ GT { Array $3 }
+  | FUNC LPAREN typ_list RPAREN ARROW typ 
+    { Func($3, $6) }
+
+typ_list:
+    /* nothing */       { []       }
+  | typ                 { [$1]     }
+  | typ COMMA typ_list  { $1 :: $3 }
 
 /* function definition */
 fdef:
@@ -73,6 +79,16 @@ fdef:
       fname=snd $1;
       params=$3;
       body=$6
+    })
+  }
+anondef:
+  LPAREN params_opt RPAREN ARROW typ LBRACE stmt_list RBRACE
+  {
+    AnonFunc({
+      rtyp=$5;
+      fname=""; /* Start with empty */
+      params=$2;
+      body=$7;
     })
   }
 
@@ -166,6 +182,7 @@ expr:
   /* function call */
   /* todo: function call can be a lvalue */
   | ID LPAREN args_opt RPAREN { Call ($1, $3) }
+  | anondef          { $1                     }
   /* new object, like "new Student {1, 2}", or simply "new Student", although it's a expr, it should not be used alone (without being assigned to some variable) */
   | NEW STRUCTID     { New(NewStruct $2)      }
 

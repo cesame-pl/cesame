@@ -75,9 +75,10 @@ let make_func_map struct_map func_decls_list =
   List.fold_left add_func built_in_decls func_decls_list
 
 (* Helper function to find a function by name in the function map *)
-let find_func fname func_map =
+let find_func fname func_map symbols =
   try StringMap.find fname func_map
-  with Not_found -> raise (Failure ("Unrecognized function " ^ fname))
+  with Not_found -> try (StringMap.find fname symbols).fname
+    with Not_found -> raise (Failure ("Unrecognized function " ^ fname))
 
 (* Helper function to create a symbol map for variables *)
 (* TODO: Also check the struct map! To check if the Struct Name is there *)
@@ -91,21 +92,33 @@ let type_of_identifier s symbols =
 
 (* Helper function to check the assignment validity *)
 (* Check assignment need information about the rhs expr, since it might be a struct literal. *)
-let rec check_assign lvaluet rvaluet rexpr err =
-  if lvaluet = rvaluet then lvaluet
+(* Returns lvaluet, but we also need to return lexpr *)
+let rec check_assign lvaluet rvaluet rexpr lexpr err =
+  if lvaluet = rvaluet && lvaluet is not a function then lvaluet
   else match lvaluet with
     Array a -> ( (* a is the inner typ *)
         match rvaluet with
           Array Void -> lvaluet (* TODO: Why Void? *)
+          | Array 
         | _ -> raise (Failure err)
       )
     | Struct str1 ->
-      match rvaluet with
+      (match rvaluet with
         Struct str2 -> if (str1 = str2) then lvaluet else raise (Failure err)
+        | StructLit
       (* TODO: More check for StructLit *)
       (* Void is for StructLit. Check every dot_assign's lhs is in the struct decl, and of the correct typ *)
       | Void -> Struct str1
-      | _ -> raise (Failure err)
+      | _ -> raise (Failure err))
+    | Func f ->
+      (match rexpr with
+        (* Rename g to f *)
+        if lvaluet == rvaluet (rtyp equal, params type equal)
+        Func g -> {rtyp = g.rtyp; params=g.params; body=g.body; fname= f.fname ^ "," ^ g.fname} This is the new right
+        {rtyp = g.rtyp; params=g.params; body=g.body; fname= f.fname ^ "," ^ g.fname} This is the new left
+        AnonFunc af -> 
+      )
+      
     | _ -> raise (Failure err)
 
 (* Recursive function to check expressions *)
@@ -143,6 +156,23 @@ let rec check_expr e struct_map bind_list func_decl_list =
       | hd :: tl -> (Array(check_array_helper l (fst (check_expr hd struct_map bind_list func_decl_list))), SArrayLit (List.map (fun x -> check_expr x struct_map bind_list func_decl_list) l))
     in 
     check_array l
+  | AnonFunc f ->
+    let check_param bind_list p =
+      let p_map = make_symbol_map struct_map bind_list in
+      match StringMap.find_opt (snd p) p_map with
+        None -> p :: bind_list
+      | Some n -> raise (Failure("Duplicated bind of " ^ (snd p) ^ " in function " ^ f.fname))
+    in
+    let rec check_params bind_list pl =
+      match pl with
+        [] -> []
+      | p :: pl -> let new_bind_list = check_param bind_list p in p :: check_params new_bind_list pl
+    in
+    let sbinds = check_params [] f.params in
+    let func_type = Func ((List.map fst f.params), f.rtyp) in 
+    let func_sbody = check_stmt_list struct_map bind_list sbinds func_decl_list [f] f.rtyp false f.body in
+    let func_sdef = SAnonFunc({srtyp = f.rtyp; sfname = f.fname; sparams = f.params; sbody = func_sbody}) in
+    (func_type, func_sdef)
   | Id var -> (type_of_identifier var symbols, SId var)
   | Unaop(op, e)->
     (match op with 
@@ -183,7 +213,7 @@ let rec check_expr e struct_map bind_list func_decl_list =
       (Int, SCall("print", args'))
   (* check_assign here is pretty interesting, we're basically assigning expr value to the func args *)
   | Call(fname, args) as call ->
-    let fd = find_func fname func_map in
+    let fd = find_func fname func_map symbols in
     let param_length = List.length fd.params in
     if List.length args != param_length then
       raise (Failure ("Expecting " ^ string_of_int param_length ^
@@ -247,7 +277,7 @@ and check_bool_expr e struct_map bind_list function_list =
 
 (* Function to check variable declarations *)
 (* check the declarations, pass the local declaration and local functions, return the new declaration list, the original function list and the checked sast *)
-let check_vdecl struct_map globals locals func_decl_list vdecl = 
+and check_vdecl struct_map globals locals func_decl_list vdecl = 
   let symbols = make_symbol_map struct_map locals in
   (* Make a map according to the locals list and find variable name in it. If not found, then it is fine, or its a duplicate declaration and need to throw an error *)
   match vdecl with
@@ -268,7 +298,7 @@ let check_vdecl struct_map globals locals func_decl_list vdecl =
   - rtyp: return type of the function to which the block belongs, the program will by default returns an int.
   Returns: 
   - a list of sstmt *)
-let rec check_stmt_list struct_map globals locals global_func_decls local_func_decls rtyp in_loop stmt = 
+and check_stmt_list struct_map globals locals global_func_decls local_func_decls rtyp in_loop stmt = 
   match stmt with 
     [] -> []
   | s :: sl ->

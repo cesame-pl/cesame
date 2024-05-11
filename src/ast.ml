@@ -6,7 +6,7 @@ type binop = Add | Sub | Mul | Div | Mod | Equal | Neq | Ge | Le | Gt | Lt | And
 type typ = Int | Char | Bool | Float | String | Void 
   | Array of typ
   | Struct of string (* for example struct "Shape" *)
-  | Function of typ * typ list
+  | Func of typ list * typ
 
 (* int x: name binding *)
 type bind = typ * string
@@ -20,7 +20,7 @@ type expr =
   | StrLit of string
   | StructLit of (string * expr) list
   | ArrayLit of expr list
-  | AnonFunc of func_def (* Name is empty*)
+  | AnonFunc of func_def (* Name is empty *)
   | Id of string (* These are constructors; We can use Id(some_string) to construction a expr *)
   | Unaop of unaop * expr
   | Binop of expr * binop * expr
@@ -40,7 +40,7 @@ and newable =
 (* For new struct object, Student a = new Student {name = "abc", age = 10}, not yet supported *)
 
 (* int x; is a bind or a expr (VDecl), but int x = 1; is a statement. *)
-type stmt =
+and stmt =
     Block of stmt list
   | Expr of expr
   (* if ... elif ... else ... *)
@@ -98,6 +98,26 @@ let string_of_binop = function
   | And   -> "&&"
   | Or    -> "||"
 
+let rec string_of_typ = function
+    Int -> "int"
+  | Char -> "char"
+  | Bool -> "bool"
+  | String -> "String"
+  | Array (t) -> "Array<" ^ string_of_typ t ^ ">"
+  | Float -> "float"
+  | Struct (s) -> s;
+  | Void -> ""
+  | Func(tl, t) -> 
+  "Func (" ^ String.concat ", " (List.map string_of_typ tl) ^ ") -> " ^ string_of_typ t
+
+let string_of_bind (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
+let string_of_bind_list l = 
+  String.concat "" (List.map string_of_bind l)
+
+let string_of_struct_decl decl = "struct " ^ decl.sname ^ "\n{\n" ^ string_of_bind_list decl.body  ^ "}\n"
+let string_of_struct_decl_list l = 
+  String.concat "" (List.map string_of_struct_decl l)
+
 let rec string_of_expr = function
     Noexpr -> ""
   | Literal (l) -> string_of_int l
@@ -112,6 +132,9 @@ let rec string_of_expr = function
       | [element] -> string_of_expr element
       | hd :: tl -> (string_of_expr hd) ^ ", " ^ (string_of_list tl) 
     in "[" ^ string_of_list a ^ "]"
+  | AnonFunc (f) ->
+    "(" ^ String.concat ", " (List.map snd f.params) ^ ") -> " ^ 
+    (string_of_typ f.rtyp) ^ " " ^ remove_last (string_of_stmt(Block(f.body)))
   | StructLit (assign_list) ->
     "{ " ^ String.concat ", " (List.map string_of_dot_assign assign_list) ^ " }"
   | Id (s) -> s
@@ -128,28 +151,8 @@ and string_of_dot_assign = function
 and string_of_newable = function
   | NewStruct(s) -> "new " ^ s
 
-and string_of_typ = function
-  Int -> "int"
-| Char -> "char"
-| Bool -> "bool"
-| String -> "String"
-| Array (t) -> "Array<" ^ string_of_typ t ^ ">"
-| Float -> "float"
-| Struct (s) -> s;
-| Void -> ""
-| Function(t, tl) -> "Func (" ^ String.concat ", " 
-(List.map string_of_typ tl) ^ ") -> " ^ string_of_typ t
-
-let string_of_bind (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
-let string_of_bind_list l = 
-  String.concat "" (List.map string_of_bind l)
-
-let string_of_struct_decl decl = "struct " ^ decl.sname ^ "\n{\n" ^ string_of_bind_list decl.body  ^ "}\n"
-let string_of_struct_decl_list l = 
-  String.concat "" (List.map string_of_struct_decl l)
-
 (* Here, string_of_stmt, string_of_stmt_list, ..., string_of_fdef are all mutually recursive *)
-let rec string_of_stmt = function
+and string_of_stmt = function
     Block (stmts) -> "{\n" ^ string_of_stmt_list stmts ^ "}\n"
   | Expr (e)      -> string_of_expr e ^ ";\n"
   | If (l, s)     -> 
