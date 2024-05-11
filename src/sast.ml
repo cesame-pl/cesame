@@ -12,6 +12,7 @@ and sx =
   | SStrLit of string
   | SStructLit of (string * sexpr) list
   | SArrayLit of sexpr list
+  | SAnonFunc of sfunc_def
   | SId of string
   | SUnaop of unaop * sexpr
   | SBinop of sexpr * binop * sexpr
@@ -25,7 +26,7 @@ and sx =
 and snewable = 
   SNewStruct of string
 
-type sstmt =
+and sstmt =
     SBlock of sstmt list
   | SExpr of sexpr
   (* | SIf of sexpr * sstmt * sstmt *)
@@ -64,6 +65,9 @@ let rec string_of_sexpr (t, e) =
   | SBoolLit (true) -> "true"
   | SBoolLit (false) -> "false"
   | SFloatLit (f) -> string_of_float f
+  | SAnonFunc (f) ->
+    "(" ^ String.concat ", " (List.map snd f.sparams) ^ ") -> " ^ 
+    (string_of_typ f.srtyp) ^ " " ^ remove_last (string_of_sstmt(SBlock(f.sbody)))
   | SStructLit (assign_list) -> "{ " ^ String.concat ", " (List.map string_of_sdot_assign assign_list) ^ " }"
   | SStrLit (s) -> "\"" ^ String.escaped s ^ "\""
   | SArrayLit (a) -> let rec string_of_list a = match a with
@@ -87,7 +91,7 @@ and string_of_sdot_assign = function
 and string_of_snewable = function
   | SNewStruct (s) -> "new " ^ s
 
-let rec string_of_sstmt = function
+and string_of_sstmt = function
     SBlock (sstmts) -> "{\n" ^ string_of_sstmt_list sstmts ^ "}\n"
   | SExpr (e)       -> string_of_sexpr e ^ ";\n"
   | SIf (l, s)      -> 
