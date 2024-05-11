@@ -3,7 +3,10 @@
 type unaop = Not
 type binop = Add | Sub | Mul | Div | Mod | Equal | Neq | Ge | Le | Gt | Lt | And | Or
 
-type typ = Int | Char | Bool | Float | String | Array of typ | Void | Struct of string (* for example struct "Shape" *)
+type typ = Int | Char | Bool | Float | String | Void 
+  | Array of typ
+  | Struct of string (* for example struct "Shape" *)
+  | Function of typ * typ list
 
 (* int x: name binding *)
 type bind = typ * string
@@ -17,6 +20,7 @@ type expr =
   | StrLit of string
   | StructLit of (string * expr) list
   | ArrayLit of expr list
+  | AnonFunc of func_def (* Name is empty*)
   | Id of string (* These are constructors; We can use Id(some_string) to construction a expr *)
   | Unaop of unaop * expr
   | Binop of expr * binop * expr
@@ -133,6 +137,8 @@ and string_of_typ = function
 | Float -> "float"
 | Struct (s) -> s;
 | Void -> ""
+| Function(t, tl) -> "Func (" ^ String.concat ", " 
+(List.map string_of_typ tl) ^ ") -> " ^ string_of_typ t
 
 let string_of_bind (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 let string_of_bind_list l = 
