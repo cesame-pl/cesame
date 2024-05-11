@@ -1,7 +1,7 @@
 int a;
 int b;
 
-int gcd(int a, int b) {
+Func gcd(int a, int b) -> int {
   while (a != b) {
     if (b < a) a = a - b;
     else b = b - a;
@@ -9,7 +9,7 @@ int gcd(int a, int b) {
   return a;
 }
 
-int main() {
+Func main() -> int {
   String s;
   int x;
   int y;

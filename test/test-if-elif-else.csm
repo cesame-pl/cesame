@@ -1,4 +1,4 @@
-int main() {
+Func main() -> int {
   int x;
   int y;
   x = 1;

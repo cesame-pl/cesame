@@ -70,8 +70,8 @@ typ_list:
   | typ                 { [$1]     }
   | typ COMMA typ_list  { $1 :: $3 }
 
-/* function definition */
-fdef:
+/* function definition 1 */
+fdef_prev:
   vdecl LPAREN params_opt RPAREN LBRACE stmt_list RBRACE
   {
     FDef({
@@ -79,6 +79,17 @@ fdef:
       fname=snd $1;
       params=$3;
       body=$6
+    })
+  }
+/* function definition 2 */
+fdef: 
+  FUNC ID LPAREN params_opt RPAREN ARROW typ LBRACE stmt_list RBRACE
+  {
+    FDef({
+      rtyp=$7;
+      fname=$2;
+      params=$4;
+      body=$9
     })
   }
 /* fname start with empty */
@@ -137,6 +148,7 @@ stmt:
   /* return */
   | RETURN expr SEMI                        { Return $2      }
   /* non-first class function definition*/
+  | fdef_prev                               { $1             }
   | fdef                                    { $1             }
   /* delete */
   | DELETE lvalue SEMI                      { Delete $2      }
