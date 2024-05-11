@@ -7,3 +7,6 @@ Array<String> s = ["H", "E", "L", "L", "O", "W", "O", "R", "L", "D"];
 for (int i = 0; i < 10; i++) {
     print(s[i]);
 }
+
+delete a;
+delete s;

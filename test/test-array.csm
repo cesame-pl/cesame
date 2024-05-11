@@ -4,6 +4,7 @@ a = ["Hello", "Nice", "to", "See", "You"];
 for (int i = 0; i < 5; i++) {
     print(a[i]);
 }
+delete a;
 
 // 2d array
 Array<Array<int>> b = [[-1, -2], [-3, -4], [-5, -6]];
@@ -12,6 +13,7 @@ for (int i = 0; i < 3; i++) {
         print(b[i][j]);
     }
 }
+delete b;
 
 // 3d array
 Array<Array<Array<int>>> c = 
@@ -26,4 +28,5 @@ for (int i = 0; i < 3; i++) {
         print(c[i][j][0]);
     }
 }
+delete c;
 

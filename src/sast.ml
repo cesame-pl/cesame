@@ -33,9 +33,11 @@ type sstmt =
   | SFor of (sstmt option) * (sexpr option) * (sexpr option) * (sstmt)
   | SWhile of sexpr * sstmt
   | SVDecl of typ * string * sexpr option
-  | SDelete of string
+  | SDelete of sexpr
   | SFDef of sfunc_def
   | SReturn of sexpr
+  | SBreak
+  | SContinue
 
 (* func_def: ret_typ fname params body *)
 and sfunc_def = {
@@ -101,10 +103,11 @@ let rec string_of_sstmt = function
   | SVDecl (t, id, opt_expr) -> 
     string_of_typ t ^ " " ^ id ^
     (match opt_expr with None -> "" | Some(opt) -> " = " ^ string_of_sexpr opt) ^ ";\n"
-  | SDelete(s)     -> string_of_stmt(Delete(s))
+  | SDelete(s)     -> "delete " ^ string_of_sexpr s ^ ";\n"
   | SFDef(f)       -> string_of_sfdef f
   | SReturn(e)     -> "return " ^ string_of_sexpr e ^ ";\n"
-
+  | SBreak         -> "break;\n"
+  | SContinue      -> "continue;\n"
 and string_of_opt_sexpr = function
     None -> ""
   | Some sexpr -> string_of_sexpr sexpr

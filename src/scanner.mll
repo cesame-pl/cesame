@@ -95,9 +95,11 @@ rule token = parse
 
 and gcomment = parse
   "*/" { token lexbuf }
+| eof  { token lexbuf }
 | _    { gcomment lexbuf }
 and lcomment = parse 
   '\n' { token lexbuf }
+| eof  { token lexbuf }
 | _    { lcomment lexbuf }
 
 and strparse s = parse

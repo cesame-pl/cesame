@@ -48,7 +48,7 @@ type stmt =
   (* int a; or int a = 1 + 2; the expression is optional *)
   | VDecl of typ * string * expr option
   (* newable *)
-  | Delete of string
+  | Delete of expr
   (* TODO: support return; *)
   | FDef of func_def (* Not first class function *)
   | Return of expr
@@ -159,7 +159,7 @@ let rec string_of_stmt = function
   | VDecl (t, id, opt_expr) ->
     string_of_typ t ^ " " ^ id ^ 
     (match opt_expr with None -> "" | Some(opt) -> " = " ^ string_of_expr opt) ^ ";\n"
-  | Delete(s)   -> "delete " ^ s ^ ";\n"
+  | Delete(s)   -> "delete " ^ string_of_expr s ^ ";\n"
   | FDef(f)     -> string_of_fdef f
   | Return(e)   -> "return " ^ string_of_expr e ^ ";\n"
   | Break       -> "break;\n"
