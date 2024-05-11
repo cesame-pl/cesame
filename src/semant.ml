@@ -268,13 +268,13 @@ let check_vdecl struct_map globals locals func_decl_list vdecl =
   - rtyp: return type of the function to which the block belongs, the program will by default returns an int.
   Returns: 
   - a list of sstmt *)
-let rec check_stmt_list struct_map globals locals global_func_decls local_func_decls rtyp stmt = 
+let rec check_stmt_list struct_map globals locals global_func_decls local_func_decls rtyp in_loop stmt = 
   match stmt with 
     [] -> []
   | s :: sl ->
     let (new_locals, new_local_func_decls, s_stmt) =
-      check_stmt struct_map globals locals global_func_decls local_func_decls rtyp s in
-    s_stmt :: check_stmt_list struct_map globals new_locals global_func_decls new_local_func_decls rtyp sl
+      check_stmt struct_map globals locals global_func_decls local_func_decls rtyp in_loop s in
+    s_stmt :: check_stmt_list struct_map globals new_locals global_func_decls new_local_func_decls rtyp in_loop sl 
 
 (* Function to check individual statements *)
 (* Params: (same as check_stmt_list)
@@ -283,7 +283,7 @@ let rec check_stmt_list struct_map globals locals global_func_decls local_func_d
     - new local func decls
     - semantically validated sstmt
     (globals are not required since the statement does not modify global variables.) *)
-and check_stmt struct_map globals locals global_func_decls local_func_decls rtyp stmt =
+and check_stmt struct_map globals locals global_func_decls local_func_decls rtyp in_loop stmt =
   (* vars: all variables; func_decls: all functions declarations *)
   let vars = globals @ locals and func_decls = global_func_decls @ local_func_decls in 
   
@@ -292,7 +292,7 @@ and check_stmt struct_map globals locals global_func_decls local_func_decls rtyp
     - every stmt within it is correct
     - nothing follows a return stmt *)
     Block b -> 
-    let sstmts = check_stmt_list struct_map vars [] func_decls [] rtyp b in
+    let sstmts = check_stmt_list struct_map vars [] func_decls [] rtyp in_loop b in
     (locals, local_func_decls, SBlock(sstmts))
   | Expr e -> 
     let sexpr = check_expr e struct_map vars func_decls in 
@@ -301,7 +301,7 @@ and check_stmt struct_map globals locals global_func_decls local_func_decls rtyp
     - bool expression in expr list
     - stmts are valid *)
   | If(l, s) -> 
-    let get_sstmt stmt = let (_, _, sstmt) = check_stmt struct_map vars [] func_decls [] rtyp stmt in sstmt in
+    let get_sstmt stmt = let (_, _, sstmt) = check_stmt struct_map vars [] func_decls [] rtyp in_loop stmt in sstmt in
     let check_if (le, ls) = (check_bool_expr le struct_map vars func_decls, get_sstmt ls) in
     (locals, local_func_decls, SIf(List.map check_if l, get_sstmt s))
   (* A For is valid if 
@@ -315,7 +315,7 @@ and check_stmt struct_map globals locals global_func_decls local_func_decls rtyp
         Some s -> 
         (match s with
           Expr _ | VDecl(_, _, _) -> 
-          let (nl, nf, ssit) = check_stmt struct_map vars [] func_decls [] rtyp s in
+          let (nl, nf, ssit) = check_stmt struct_map vars [] func_decls [] rtyp true s in
           (nl, nf, Some ssit)
         | _ -> raise (Failure("For loop only supports single-line statements"))) 
       | None -> (locals, local_func_decls, None) 
@@ -331,10 +331,10 @@ and check_stmt struct_map globals locals global_func_decls local_func_decls rtyp
       | None -> None 
     in 
     let (_, _, ss_l) = 
-      check_stmt struct_map (vars @ new_locals) [] func_decls [] rtyp (Block(stmt_l)) in 
+      check_stmt struct_map (vars @ new_locals) [] func_decls [] rtyp true (Block(stmt_l))in 
     (locals, local_func_decls, SFor(s_init_stmt, s_end_cond, s_trans_e, ss_l))
   | While (e, s) -> 
-    let (_, _, sstmts) = check_stmt struct_map globals locals global_func_decls local_func_decls rtyp s in 
+    let (_, _, sstmts) = check_stmt struct_map globals locals global_func_decls local_func_decls rtyp true s in 
     let swhile = SWhile(check_bool_expr e struct_map vars func_decls, sstmts) in 
     (locals, local_func_decls, swhile)
   (* A VDecl is valid if 
@@ -374,7 +374,7 @@ and check_stmt struct_map globals locals global_func_decls local_func_decls rtyp
       - locals: params
       - global_func_decls: global_func_decls @ local_func_decls
       - local_func_decls: <itself> *)
-    let sstmts = check_stmt_list struct_map vars sbinds func_decls [f] f.rtyp f.body in
+    let sstmts = check_stmt_list struct_map vars sbinds func_decls [f] f.rtyp false f.body in
     let sfdef = SFDef({srtyp = f.rtyp; sfname = sname; sparams = f.params; sbody = sstmts}) in
     (locals, f::local_func_decls, sfdef)
   | Return e ->
@@ -384,6 +384,8 @@ and check_stmt struct_map globals locals global_func_decls local_func_decls rtyp
     else
       raise (Failure ("Return gives " ^ string_of_typ t ^
                       " expected " ^ string_of_typ rtyp ^ " in " ^ string_of_expr e))
+  | Break -> if in_loop then (locals, local_func_decls, SBreak) else raise(Failure("The break statement is not in a loop\n"))
+  | Continue -> if in_loop then (locals, local_func_decls, SContinue) else raise(Failure("The continue statement is not in a loop\n"))
   | _ -> raise (Failure ("TODO:\n" ^ string_of_stmt stmt))
 
 (* Entry point for the semantic checker *)
@@ -393,4 +395,4 @@ let check (struct_decls, stmts) =
   (* let _ = print_struct_map struct_map in *)
   (struct_decls, (* TODO: return sstruct_decls *)
   (* check statements *)
-  check_stmt_list struct_map [] [] [] [] Int stmts)
+  check_stmt_list struct_map [] [] [] [] Int false stmts)

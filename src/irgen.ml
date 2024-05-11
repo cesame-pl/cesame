@@ -204,7 +204,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   in
 
   (* Recursive function to build LLVM IR for statements *)
-  let rec build_stmt globals locals global_func_decls local_func_decls builder sexpr = 
+  let rec build_stmt globals locals global_func_decls local_func_decls loop_info builder sexpr = 
     (* globals and locals won't change after being combined *)
     (* vars: all variables; func_decls: all functions declarations *)
     let vars = combine_maps globals locals and func_decls = combine_maps global_func_decls local_func_decls in
@@ -230,20 +230,20 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       (new_locals, local_func_decls, builder)
 
     | SBlock (sstmt_l) -> 
-      let new_builder = build_stmt_list vars StringMap.empty func_decls StringMap.empty builder sstmt_l in 
+      let new_builder = build_stmt_list vars StringMap.empty func_decls StringMap.empty loop_info builder sstmt_l in 
       (locals, local_func_decls, new_builder)
 
     | SIf (se_sst_l, sst) -> 
       let rec build_if globals locals builder = function
           ([] , sst) -> 
-          let (_, _, new_builder) = build_stmt globals locals global_func_decls local_func_decls builder sst in 
+          let (_, _, new_builder) = build_stmt globals locals global_func_decls local_func_decls loop_info builder sst in 
           new_builder 
         | ((fse, then_sst) :: else_sl, sst) -> 
           let bool_val = build_expr vars func_decls builder fse in 
           let merge_bb = L.append_block context "merge" (func_of_builder builder) in 
           let b_br_merge = L.build_br merge_bb in 
           let then_bb = L.append_block context "then" (func_of_builder builder) in 
-          let (_, _, then_stmt_builder) = build_stmt globals locals global_func_decls local_func_decls (L.builder_at_end context then_bb) then_sst in 
+          let (_, _, then_stmt_builder) = build_stmt globals locals global_func_decls local_func_decls loop_info (L.builder_at_end context then_bb) then_sst in 
           add_terminal then_stmt_builder b_br_merge; 
           let else_bb = L.append_block context "else" (func_of_builder builder) in 
           let else_stmt_builer = build_if globals locals (L.builder_at_end context else_bb) (else_sl, sst) in 
@@ -256,12 +256,12 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     | SWhile (se, sst) -> 
       let pred_bb = L.append_block context "while" (func_of_builder builder) in 
       ignore(L.build_br pred_bb builder);
-      let body_bb = L.append_block context "while_body" (func_of_builder builder) in 
-      let (_, _, while_body_builder) = build_stmt globals locals global_func_decls local_func_decls (L.builder_at_end context body_bb) sst in 
-      add_terminal while_body_builder (L.build_br pred_bb);
+      let body_bb = L.append_block context "while_body" (func_of_builder builder) in body_bb; 
       let pred_builder = L.builder_at_end context pred_bb in 
       let bool_val = build_expr vars func_decls pred_builder se in 
       let merge_bb = L.append_block context "merge" (func_of_builder builder) in ignore(L.build_cond_br bool_val body_bb merge_bb pred_builder);
+      let while_body_builder =  (L.builder_at_end context body_bb) in
+      let (_, _, new_while_body_builder) = build_stmt globals locals global_func_decls local_func_decls (Some pred_bb, Some merge_bb) while_body_builder sst in add_terminal new_while_body_builder (L.build_br pred_bb);
       (locals, local_func_decls, L.builder_at_end context merge_bb)
 
     | SFor (init, end_cond, trans_exp, sstmt_list) -> 
@@ -277,7 +277,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
           Some s -> s
         | None -> (Void, Noexpr) in 
       let new_block = SBlock([init_stmt; SWhile(end_cond_expr, SBlock([sstmt_list; SExpr(trans_stmt)]))]) in
-      build_stmt globals locals global_func_decls local_func_decls builder new_block
+      build_stmt globals locals global_func_decls local_func_decls (None, None) builder new_block
     
     | SFDef (fd) ->
       (* TODO: array or struct as params *)
@@ -300,7 +300,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let func_local_func_decls = StringMap.add fd.sfname func_ptr StringMap.empty in
 
       (* Build the function body *)
-      let new_builder = build_stmt_list vars func_locals func_decls func_local_func_decls func_builder fd.sbody in
+      let new_builder = build_stmt_list vars func_locals func_decls func_local_func_decls (None, None) func_builder fd.sbody in
       let ret = (match fd.srtyp with 
           Void -> L.build_ret_void 
         | _ -> L.build_ret (L.const_int (ltype_of_typ fd.srtyp) 0) )
@@ -310,16 +310,23 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       (* Returns the original locals and builder, but new local func decls *)
       let new_local_func_decls = StringMap.add fd.sfname func_ptr local_func_decls in
       (locals, new_local_func_decls, builder)
-
+    | SBreak -> (match loop_info with
+        (_, None) -> raise(Failure("Break error, this should not happen, lack branch target"))
+      | (_, Some merge_bb) -> L.build_br merge_bb builder;
+        (locals, local_func_decls, builder))
+    | SContinue -> (match loop_info with
+      (None, _) -> raise(Failure("Continue error, this should not happen, lack branch target"))
+    | (Some pred_bb, _) -> L.build_br pred_bb builder;
+      (locals, local_func_decls, builder))
     | SReturn se -> 
       ignore(L.build_ret (build_expr vars func_decls builder se) builder);
       (locals, local_func_decls, builder)
   
-  and build_stmt_list globals locals global_func_decls local_func_decls builder = function
+  and build_stmt_list globals locals global_func_decls local_func_decls loop_info builder = function
       [] -> builder
     | s :: sl -> 
-      let (new_locals, new_local_func_decls, new_builder) = build_stmt globals locals global_func_decls local_func_decls builder s in
-      build_stmt_list globals new_locals global_func_decls new_local_func_decls new_builder sl
+      let (new_locals, new_local_func_decls, new_builder) = build_stmt globals locals global_func_decls local_func_decls loop_info builder s in
+      build_stmt_list globals new_locals global_func_decls new_local_func_decls loop_info new_builder sl
   in
 
   (* Function to build global struct declarations list *)
@@ -362,7 +369,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   let main = L.define_function "main" (L.function_type i32_t [||]) the_module in
   let _ = build_struct_decl_list (fst program) in
   let builder = L.builder_at_end context (L.entry_block main) in
-  let main_builder = build_stmt_list globals locals global_func_decls local_func_decls builder (snd program) in
+  let main_builder = build_stmt_list globals locals global_func_decls local_func_decls (None, None) builder (snd program) in
   let _ = add_terminal main_builder (L.build_ret (L.const_int i32_t 0)) in
 
   the_module

@@ -115,15 +115,14 @@ stmt:
   {
     For($3, $5, $7, $10)
   }
-  | CONTINUE                                { Continue       }
-  | BREAK                                   { Break          }
+  | CONTINUE SEMI                               { Continue       }
+  | BREAK SEMI                                  { Break          }
   /* return */
   | RETURN expr SEMI                        { Return $2      }
   /* non-first class function definition*/
   | fdef                                    { $1             }
   /* delete */
   | DELETE ID                               { Delete $2      }
-
 
 ifelifstmt:
     IF LPAREN expr RPAREN stmt              { [($3, $5)] }
