@@ -115,8 +115,8 @@ stmt:
   {
     For($3, $5, $7, $10)
   }
-  | CONTINUE                                { Continue       }
-  | BREAK                                   { Break          }
+  | CONTINUE SEMI                               { Continue       }
+  | BREAK SEMI                                  { Break          }
   /* return */
   | RETURN expr SEMI                        { Return $2      }
   /* non-first class function definition*/

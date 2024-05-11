@@ -36,6 +36,8 @@ type sstmt =
   | SDelete of sexpr
   | SFDef of sfunc_def
   | SReturn of sexpr
+  | SBreak
+  | SContinue
 
 (* func_def: ret_typ fname params body *)
 and sfunc_def = {
@@ -104,7 +106,8 @@ let rec string_of_sstmt = function
   | SDelete(s)     -> "delete " ^ string_of_sexpr s ^ ";\n"
   | SFDef(f)       -> string_of_sfdef f
   | SReturn(e)     -> "return " ^ string_of_sexpr e ^ ";\n"
-
+  | SBreak         -> "break;\n"
+  | SContinue      -> "continue;\n"
 and string_of_opt_sexpr = function
     None -> ""
   | Some sexpr -> string_of_sexpr sexpr
