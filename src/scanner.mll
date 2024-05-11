@@ -9,9 +9,8 @@ let letter = lletter | uletter
 let heading_spaces = ('\r' | '\n' | "\r\n") [' ' '\t']*
 
 let exp = ('e'|'E')
-let sign = ('+'|'-')
 let digit = ['0'-'9']
-let int = sign? digit+
+let int = digit+
 let float = (
   int? '.' digit+ (exp int)? |
   int '.' digit* (exp int)? |
