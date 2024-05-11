@@ -85,7 +85,7 @@ rule token = parse
           | 't' -> '\t'
           | '\\' -> '\\'
           | '\'' -> '\''
-          | _ -> raise (Failure "Not Exists")
+          | _ -> raise (Failure "does not exist")
   in CLIT(c)  }
 | '"'      { let s = "" in strparse s lexbuf }
 

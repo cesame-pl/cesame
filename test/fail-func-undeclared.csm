@@ -1,0 +1,9 @@
+Func main(int a, int b) -> int {
+    // Calling the function before it's defined
+    add(a, b);
+    return 0;
+}
+
+Func add(int x, int y) -> int {
+    return a + b;
+}

@@ -4,7 +4,5 @@ struct Student {
     Array<String> courses;
 };
 
-struct School {
-    String name;
-    Array<Student> all_students;
-};
+Student a;
+a.gpa = 4.0; // Invalid member not defined in struct

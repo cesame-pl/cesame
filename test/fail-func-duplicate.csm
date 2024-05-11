@@ -1,0 +1,8 @@
+Func greeting() -> String {
+    return "Hello";
+}
+
+Func greeting(String n) -> String {
+    println(n);
+    return "Great to see you";
+}

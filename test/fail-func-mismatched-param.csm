@@ -1,0 +1,8 @@
+Func add(int a, int b) -> int {
+    return a + b;
+}
+
+String x = "1";
+int y = 3;
+
+add(x, y);

@@ -33,11 +33,11 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   let struct_tbl = Hashtbl.create 1000 in
   let struct_lookup name = 
     try Hashtbl.find struct_tbl name 
-      with Not_found -> raise (Failure ("Struct type '" ^ name ^ "' not found"))
+      with Not_found -> raise (Failure ("struct type '" ^ name ^ "' not found"))
   in
   let struct_member_index member_name struct_decl =
     let rec find_index index = function
-      | [] -> raise (Failure ("Struct member '" ^ member_name ^ "' not found")) (* Member not found *)
+      | [] -> raise (Failure ("struct member '" ^ member_name ^ "' not found")) (* Member not found *)
       | (_, name) :: rest ->
           if name = member_name then index (* Return the index if the member is found *)
           else find_index (index + 1) rest
@@ -78,10 +78,10 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
 
   (* Printf format string based on type *)
   let fmt_str_of_typ = function 
-      Int    -> "%d\n"
-    | Float  -> "%g\n"
-    | String -> "%s\n"
-    | _      -> raise (Failure "Unsupported type for print")
+      Int    -> "%d"
+    | Float  -> "%g"
+    | String -> "%s"
+    | _      -> raise (Failure "unsupported type for print")
   in
 
   let func_of_builder builder = L.block_parent (L.insertion_block builder) in
@@ -168,8 +168,10 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let e1' = var_addr_lookup vars func_decls builder (snd se1) in 
       let e2' = build_expr vars func_decls builder se2 in
       ignore(L.build_store e2' e1' builder); e2'
-    | SCall ("print", [se]) ->
-      let printf_format = L.build_global_stringptr (fmt_str_of_typ (fst se)) "fmt" builder in
+    | (SCall ("print", [se]) as call)
+    | (SCall ("println", [se]) as call) -> 
+      let newline = (match call with SCall("println", _) -> "\n" | _ -> "") in
+      let printf_format = L.build_global_stringptr (fmt_str_of_typ (fst se) ^ newline) "fmt" builder in
       L.build_call printf_func [| printf_format; (build_expr vars func_decls builder se) |] "printf" builder
     | SCall (f, sel) -> (* fname: string, args: se list *)
       let func_ptr = func_addr_lookup func_decls f in 
@@ -318,11 +320,11 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let new_local_func_decls = StringMap.add fd.sfname func_ptr local_func_decls in
       (locals, new_local_func_decls, builder)
     | SBreak -> (match loop_info with
-        (_, None) -> raise(Failure("Break error, this should not happen, lack branch target"))
+        (_, None) -> raise(Failure("break error, this should not happen, lack branch target"))
       | (_, Some merge_bb) -> L.build_br merge_bb builder;
         (locals, local_func_decls, builder))
     | SContinue -> (match loop_info with
-      (None, _) -> raise(Failure("Continue error, this should not happen, lack branch target"))
+      (None, _) -> raise(Failure("continue error, this should not happen, lack branch target"))
     | (Some pred_bb, _) -> L.build_br pred_bb builder;
       (locals, local_func_decls, builder))
     | SReturn se -> 
