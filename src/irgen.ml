@@ -229,6 +229,13 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let new_locals = StringMap.add var_name lhs_addr locals in 
       (new_locals, local_func_decls, builder)
 
+    | SDelete se ->
+      let arr_type = ltype_of_typ Int in
+      let ptr = build_expr vars func_decls builder se in
+      (* let ptr_cast = L.build_pointercast ptr arr_type "arr_ptr" builder in *)
+      L.build_free ptr builder;
+      (locals, local_func_decls, builder)
+
     | SBlock (sstmt_l) -> 
       let new_builder = build_stmt_list vars StringMap.empty func_decls StringMap.empty builder sstmt_l in 
       (locals, local_func_decls, new_builder)

@@ -122,8 +122,7 @@ stmt:
   /* non-first class function definition*/
   | fdef                                    { $1             }
   /* delete */
-  | DELETE ID                               { Delete $2      }
-
+  | DELETE lvalue SEMI                      { Delete $2      }
 
 ifelifstmt:
     IF LPAREN expr RPAREN stmt              { [($3, $5)] }

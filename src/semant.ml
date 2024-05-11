@@ -339,14 +339,19 @@ and check_stmt struct_map globals locals global_func_decls local_func_decls rtyp
     (locals, local_func_decls, swhile)
   (* A VDecl is valid if 
     - no duplicate local var decl *)
-  | VDecl(t, s, eop) -> 
+  | VDecl (t, s, eop) -> 
     let (new_locals, svdec) = check_vdecl struct_map globals locals func_decls (t, s, eop) in 
     (new_locals, local_func_decls, svdec)
   (* A FDef is valid if 
     - no duplicate function name (check_fname)
     - no duplicate params (check_param)
     - body stmt list is valid *)
-  | FDef(f) ->
+  | Delete (e) -> 
+    let se = check_expr e struct_map vars func_decls in
+    (match se with 
+      (Array _, _) -> (locals, func_decls, SDelete se)
+    | _ -> raise (Failure "Cannot delete this data type"))
+  | FDef (f) ->
     (* check whether there are duplicate params *)
     let check_param bind_list p =
       let p_map = make_symbol_map struct_map bind_list in
