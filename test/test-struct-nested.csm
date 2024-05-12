@@ -1,0 +1,29 @@
+struct Address {  
+    String country;
+    String city;
+    String state;
+    int zipcode;
+};
+
+struct Student {  
+    String name;
+    Address addr;  
+};
+
+Address a;
+a.country = "US";
+a.city = "NY";
+a.state = "New York";
+a.zipcode = 10027;
+
+Student mike;
+mike.name = "Mike";
+mike.addr = a;
+
+print(mike.addr.state);
+print(", ");
+print(mike.addr.city);
+print(", ");
+print(mike.addr.country);
+print(" ");
+println(mike.addr.zipcode);
