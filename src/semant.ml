@@ -160,10 +160,9 @@ let rec check_expr e struct_map bind_list func_decl_list =
     if t1 = t2 then
       (* Determine expression type based on operator and operand types *)
       let t = match op with
-          Mul | Div | Mod | Add | Sub when t1 = Int -> Int
+          Add | Sub | Mul | Div | Mod when t1 = Int -> Int
         | Equal | Neq -> Bool
-        | Lt when t1 = Int -> Bool
-        | Gt when t1 = Int -> Bool
+        | Ge | Le | Lt | Gt when t1 = Int -> Bool
         | And | Or when t1 = Bool -> Bool
         | _ -> raise (Failure err)
       in

@@ -1,0 +1,14 @@
+Func factorial(int n) -> int {
+
+    Func inner_factorial(int n) -> int {
+        if (n <= 1) {
+            return 1;
+        }
+
+        return n * inner_factorial(n - 1);
+    }
+
+    return inner_factorial(n);
+}
+
+print(factorial(4));
