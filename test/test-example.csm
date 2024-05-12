@@ -1,0 +1,29 @@
+Func gcd(int a, int b) -> int {
+	while (a != b) {
+		if (b < a) a = a - b;
+		else b = b - a;
+	}
+	return a;
+}
+
+Func main() -> int {
+	int a;
+	int b;
+	String s;
+	int x;
+	int y;
+	s = "";
+	a = 18;
+	b = 9;
+	x = 2;
+	y = 14;
+	s = "Hello\n";
+	println(gcd(x,y));
+	println(gcd(3,15));
+	println(gcd(99,121));
+	println(gcd(a,b));
+	return 0;
+}
+
+main();
+
