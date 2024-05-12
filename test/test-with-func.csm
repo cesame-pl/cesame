@@ -1,5 +1,5 @@
 int s;
-int main(int a, int b) {
+Func main(int a, int b) -> int {
     s = 1; //Can compile, also compilable in c
     String s;
     s = "Hello, World!";

@@ -1,7 +1,7 @@
 String s = "Hello world";
 int a = 1;
 print(a);
-int f(int a) {
+Func f(int a) -> int {
     int d = 1;
 }
 {

@@ -5,13 +5,13 @@ open Ast
 type sexpr = (typ * sx)
 and sx =
     Noexpr
-  | SLiteral of int
   | SCharLit of char
   | SBoolLit of bool
+  | SLiteral of int
   | SFloatLit of float
   | SStrLit of string
   | SStructLit of (string * sexpr) list
-  | SArrayLit of sexpr list
+  | SNew of snewable 
   | SAnonFunc of sfunc_def
   | SId of string
   | SUnaop of unaop * sexpr
@@ -19,12 +19,11 @@ and sx =
   | SAssign of sexpr * sexpr
   (* call *)
   | SCall of string * sexpr list
-  | SNew of snewable
   | SAccessMember of sexpr * sexpr
   | SAccessEle of sexpr * sexpr (* The second sexpr can be only be of int type, so can be an expr *)
 
 and snewable = 
-  SNewStruct of string
+  SArrayLit of sexpr list
 
 and sstmt =
     SBlock of sstmt list
@@ -60,36 +59,34 @@ let rec string_of_sexpr (t, e) =
   "(" ^ string_of_typ t ^ " : " ^ 
   (match e with
     Noexpr -> ""
-  | SLiteral (l) -> string_of_int l
   | SCharLit (c) -> "'" ^ Char.escaped c ^ "'"
   | SBoolLit (true) -> "true"
   | SBoolLit (false) -> "false"
+  | SLiteral (l) -> string_of_int l
   | SFloatLit (f) -> string_of_float f
-  | SAnonFunc (f) ->
-    "(" ^ String.concat ", " (List.map snd f.sparams) ^ ") -> " ^ 
-    (string_of_typ f.srtyp) ^ " " ^ remove_last (string_of_sstmt(SBlock(f.sbody)))
-  | SStructLit (assign_list) -> "{ " ^ String.concat ", " (List.map string_of_sdot_assign assign_list) ^ " }"
   | SStrLit (s) -> "\"" ^ String.escaped s ^ "\""
-  | SArrayLit (a) -> let rec string_of_list a = match a with
+  | SStructLit (assign_list) -> 
+    "{ " ^ String.concat ", " (List.map string_of_sdot_assign assign_list) ^ " }"
+  | SNew(SArrayLit (a)) ->
+    let rec string_of_list a = match a with
         [] -> ""
       | [element] -> string_of_sexpr element
       | hd :: tl -> (string_of_sexpr hd) ^ ", " ^ (string_of_list tl) 
     in "[" ^ string_of_list a ^ "]"
+  | SAnonFunc (f) ->
+    "(" ^ String.concat ", " (List.map snd f.sparams) ^ ") -> " ^ 
+    (string_of_typ f.srtyp) ^ " " ^ remove_last (string_of_sstmt(SBlock(f.sbody)))
   | SId (s) -> s
   | SUnaop (o, e) -> string_of_unaop o ^ string_of_sexpr e
   | SBinop (e1, o, e2) -> string_of_sexpr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_sexpr e2
   | SAssign (e1, e2) -> string_of_sexpr e1 ^ " = " ^ string_of_sexpr e2
   | SCall (f, el) -> f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
-  | SNew (n) -> string_of_snewable n
   | SAccessMember (e1, e2) -> string_of_sexpr e1 ^ "." ^ string_of_sexpr e2
   | SAccessEle (e1, e2) -> string_of_sexpr e1 ^ "[" ^ string_of_sexpr e2 ^ "]") ^ 
   ")"
 
 and string_of_sdot_assign = function
 | (l, r) ->  "." ^ l ^ " = " ^ (string_of_sexpr r)
-
-and string_of_snewable = function
-  | SNewStruct (s) -> "new " ^ s
 
 and string_of_sstmt = function
     SBlock (sstmts) -> "{\n" ^ string_of_sstmt_list sstmts ^ "}\n"
@@ -112,6 +109,7 @@ and string_of_sstmt = function
   | SReturn(e)     -> "return " ^ string_of_sexpr e ^ ";\n"
   | SBreak         -> "break;\n"
   | SContinue      -> "continue;\n"
+
 and string_of_opt_sexpr = function
     None -> ""
   | Some sexpr -> string_of_sexpr sexpr

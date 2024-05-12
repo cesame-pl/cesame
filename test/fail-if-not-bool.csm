@@ -1,0 +1,6 @@
+String a = "Hello";
+
+// a is not a boolean
+if (a) {
+    print("Hello");
+}

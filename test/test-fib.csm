@@ -1,5 +1,5 @@
 
-int fib(int n) {
+Func fib(int n) -> int {
     if (n < 2){
     return 1;
     }

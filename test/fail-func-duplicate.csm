@@ -1,0 +1,10 @@
+Func greeting() -> void {
+    print("Hello");
+}
+
+Func greeting(String n) -> void {
+    print("Great to see you, ");
+    println(n);
+}
+
+greeting();

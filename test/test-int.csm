@@ -1,0 +1,8 @@
+// Basic arithmetic operations
+println(1);
+println(-1);
+println(2* 4);
+println(9 -1);
+println(9 % 4);
+println(4/ 3);
+println(8 * 2 - 4);
