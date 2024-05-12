@@ -1,0 +1,16 @@
+String name = "Alice";
+
+Func greeting() -> String {
+    return "Hello, ";
+}
+
+if (name == "Alice") {
+    // Function declaration within conditional block
+    Func helloAlice() -> Void {
+        print(greeting());
+        println(name);
+    }
+}
+
+// Attempting to call the function outside its scope
+helloAlice(name);

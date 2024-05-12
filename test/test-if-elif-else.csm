@@ -1,40 +1,47 @@
-int main() {
-  int x;
-  int y;
-  x = 1;
-  y = 2;
-  bool b = false;
-
-  /* You can do if (elif)+ (else)* */
-
-  if (x == 1) {
-    y = 3;
-  } elif (x == 2) {
+Func main() -> int {
+    int x;
+    int y;
+    x = 1;
     y = 2;
-  } elif (x == 3) {
-    y = 1;
-  } else {
-    y = 0;
-  }
-  
-  if (x == 1) {
-    y = 3;
-  } else {
-    y = 0;
-  }
-  
-  if (!b) {
-    y = 3;
-  }
 
-  if (x == 1) {
-    y = 3;
-  } elif (x == 2) {
-    y = 2;
-  }
+    /* if (elif)+ (else)* is supported */
 
-  if (x == 1)
-    x = 123123;
-  elif (x == 1)
-    x = 123;
+    if (x == 1) {
+        y = 3;
+    } elif (x == 2) {
+        y = 2;
+    } elif (x == 3) {
+        y = 1;
+    } else {
+        y = 0;
+    }
+    println(y);
+    
+    if (x == 1) {
+        y = 100;
+    } else {
+        y = 0;
+    }
+    println(y);
+
+    bool b = false;
+    if (!b) {
+        y = 10;
+    }
+    println(y);
+
+    if (x == 1) {
+        y = 3;
+    } elif (x == 2) {
+        y = 2;
+    }
+    println(y);
+
+    if (x == 1)
+        x = 123123;
+    elif (x == 1)
+        x = 123;
+    println(x);
 }
+
+main();

@@ -6,5 +6,5 @@ struct Student {
 
 struct School {
     String name;
-    Array<Teacher> all_teachers; // Teachers are not defined!
+    Array<Teacher> all_teachers; // Teachers are not defined
 };

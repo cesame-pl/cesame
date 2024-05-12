@@ -1,0 +1,7 @@
+// Invalid struct name: struct name has to start with a upper case letter
+struct book{
+   char  title[50];
+   char  author[50];
+   double price;
+   int   pages;
+};  

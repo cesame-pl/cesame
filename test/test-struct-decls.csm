@@ -1,14 +1,10 @@
 struct Student {
     String name;
+    int age;
     Array<String> courses;
 };
 
 struct School {
     String name;
-    Array<Student> all_students;
+    Array<Student> students;
 };
-
-Student a;
-Student b;
-Array<Student> s = [a,b];
-a;

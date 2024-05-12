@@ -1,34 +1,15 @@
-struct Student {
-    String name;
-    int age;
-    //Array<String> courses;
+struct Book {
+   String name;
+   String author;
+   int published_date;
 };
 
-// Student a = new Student;
-Student a;
-a.name = "Mike";
-a.age = 22;
-//a.courses = ["math", "history", "cs"];
-//a.courses[0] = "french";
+Book b;
+b.name = "Compilers: Principles, Techniques, and Tools";
+b.author = "Alfred V. Aho, Monica S. Lam, Ravi Sethi, and Jeffrey D. Ullman";
+b.published_date = 2006;
 
-Student b;
-b.name = "Alice";
-b.age = 24;
-//b.courses = ["plt", "os", "database"];
-
-/* Not yet supported */
-// c = new Student;
-// Student c =  { .name = "Alice", .age = 24, .courses = ["PLT", "OS"] };
-
-/* Not yet supported */
-// Student d;
-// d = { .name = "Bob", .age = 52 };
-
-Array<Student> students = [a, b];
-for (int i = 0; i < 2; i++) {
-    for (int j = 0; j < 3; j++) {
-        String s = students[1].name;
-        print(s);
-    }
-}
-
+print("The authors of '");
+print(b.name);
+print("' are ");
+print(b.author);

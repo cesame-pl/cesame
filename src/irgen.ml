@@ -22,7 +22,9 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   let the_module = L.create_module context "cesame" in
 
   (* LLVM types *)
-  let i32_t      = L.i32_type       context (* integer *)
+
+  let void_t     = L.void_type      context (* void    *)
+  and i32_t      = L.i32_type       context (* integer *)
   and f64_t      = L.double_type    context (* float   *)
   and char_t     = L.i8_type        context (* Char    *)
   and char_pt    = L.pointer_type   (L.i8_type context) (* Char* *)
@@ -33,11 +35,11 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   let struct_tbl = Hashtbl.create 1000 in
   let struct_lookup name = 
     try Hashtbl.find struct_tbl name 
-      with Not_found -> raise (Failure ("Struct type '" ^ name ^ "' not found"))
+      with Not_found -> raise (Failure ("struct type '" ^ name ^ "' not found"))
   in
   let struct_member_index member_name struct_decl =
     let rec find_index index = function
-      | [] -> raise (Failure ("Struct member '" ^ member_name ^ "' not found")) (* Member not found *)
+      | [] -> raise (Failure ("struct member '" ^ member_name ^ "' not found")) (* Member not found *)
       | (_, name) :: rest ->
           if name = member_name then index (* Return the index if the member is found *)
           else find_index (index + 1) rest
@@ -47,10 +49,11 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
 
   (* Return LLVM type for sast type *)
   let rec ltype_of_typ = function
-      Int     -> i32_t
-    | Float   -> f64_t
+      Void    -> void_t
+    | Char    -> char_pt
     | Bool    -> bool_t
-    | Char    -> char_t
+    | Int     -> i32_t
+    | Float   -> f64_t
     | String  -> char_pt
     | Array t -> L.pointer_type (ltype_of_typ t)
     | Struct s ->
@@ -78,10 +81,11 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
 
   (* Printf format string based on type *)
   let fmt_str_of_typ = function 
-      Int    -> "%d\n"
-    | Float  -> "%g\n"
-    | String -> "%s\n"
-    | _      -> raise (Failure "Unsupported type for print")
+      Int    -> "%d"
+    | Float  -> "%g"
+    | String -> "%s"
+    | Char   -> "%s"
+    | _      -> raise (Failure "unsupported type for print")
   in
 
   let func_of_builder builder = L.block_parent (L.insertion_block builder) in
@@ -96,13 +100,13 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   (* Takes in an sexpr; Returns Llvalue *)
   let rec build_expr vars func_decls builder ((t, sx) : sexpr) : L.llvalue =
     match sx with
-      Noexpr          -> L.const_int i32_t 0
-    | SLiteral (i)    -> L.const_int i32_t i
-    | SCharLit (c)    -> L.const_int (ltype_of_typ Char) (Char.code c)
-    | SBoolLit (b)    -> L.const_int bool_t (if b then 1 else 0)
-    | SFloatLit (f)   -> L.const_float f64_t f
-    | SStrLit (s)     -> L.build_global_stringptr s "str" builder
-    | SArrayLit (l)   -> 
+      Noexpr              -> L.const_int i32_t 0
+    | SLiteral (i)        -> L.const_int i32_t i
+    | SCharLit (c)        -> L.build_global_stringptr (String.make 1 c) "str" builder
+    | SBoolLit (b)        -> L.const_int bool_t (if b then 1 else 0)
+    | SFloatLit (f)       -> L.const_float f64_t f
+    | SStrLit (s)         -> L.build_global_stringptr s "str" builder
+    | SNew(SArrayLit (l)) -> 
       let arr_size = List.length l and arr_type = ltype_of_typ t in
       let arr_alloca = L.build_array_allo arr_type (L.const_int i32_t arr_size) "arr" builder in
       let arr_ptr = L.build_pointercast arr_malloc arr_type "arr_ptr" builder in
@@ -128,7 +132,8 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     | SUnaop (op, se) ->
       let e' = build_expr vars func_decls builder se in 
       (match op with 
-        Not -> L.build_not e' "tmp" builder)
+        Not ->  L.build_not e' "tmp" builder
+      | Neg -> L.build_neg e' "tmp" builder)
     | SBinop (se1, op, se2) ->
       (* check if se1 and se2 are valid in semant *)
       (* print_string (string_of_sexpr((t,  SBinop(se1, op, se2)))); *)
@@ -180,13 +185,15 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let e1' = var_addr_lookup vars func_decls builder (snd se1) in 
       let e2' = build_expr vars func_decls builder se2 in
       ignore(L.build_store e2' e1' builder); e2'
-    | SCall ("print", [se]) ->
-      let printf_format = L.build_global_stringptr (fmt_str_of_typ (fst se)) "fmt" builder in
+    | (SCall ("print", [se]) as call)
+    | (SCall ("println", [se]) as call) -> 
+      let newline = (match call with SCall("println", _) -> "\n" | _ -> "") in
+      let printf_format = L.build_global_stringptr (fmt_str_of_typ (fst se) ^ newline) "fmt" builder in
       L.build_call printf_func [| printf_format; (build_expr vars func_decls builder se) |] "printf" builder
     | SCall (f, sel) -> (* fname: string, args: se list *)
       let func_ptr = func_addr_lookup func_decls f in 
       let func_args = List.rev (List.map (build_expr vars func_decls builder) (List.rev sel)) in
-      L.build_call func_ptr (Array.of_list func_args) (f ^ "_result") builder
+      L.build_call func_ptr (Array.of_list func_args) "" builder
     | SAccessMember _ | SAccessEle _ -> 
       let sub_ptr = var_addr_lookup vars func_decls builder sx in 
       L.build_load sub_ptr "tmp" builder
@@ -240,6 +247,13 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       in
       let new_locals = StringMap.add var_name lhs_addr locals in 
       (new_locals, local_func_decls, builder)
+
+    | SDelete se ->
+      let arr_type = ltype_of_typ Int in
+      let ptr = build_expr vars func_decls builder se in
+      (* let ptr_cast = L.build_pointercast ptr arr_type "arr_ptr" builder in *)
+      L.build_free ptr builder;
+      (locals, local_func_decls, builder)
 
     | SBlock (sstmt_l) -> 
       let new_builder = build_stmt_list vars StringMap.empty func_decls StringMap.empty loop_info builder sstmt_l in 
@@ -314,8 +328,8 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       (* Build the function body *)
       let new_builder = build_stmt_list vars func_locals func_decls func_local_func_decls (None, None) func_builder fd.sbody in
       let ret = (match fd.srtyp with 
-          Void -> L.build_ret_void 
-        | _ -> L.build_ret (L.const_int (ltype_of_typ fd.srtyp) 0) )
+          Void -> L.build_ret_void
+        | _ -> L.build_ret (L.const_int (ltype_of_typ fd.srtyp) 0))
       in
       ignore(add_terminal new_builder ret);
 
@@ -323,11 +337,11 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let new_local_func_decls = StringMap.add fd.sfname func_ptr local_func_decls in
       (locals, new_local_func_decls, builder)
     | SBreak -> (match loop_info with
-        (_, None) -> raise(Failure("Break error, this should not happen, lack branch target"))
+        (_, None) -> raise(Failure("break error, this should not happen, lack branch target"))
       | (_, Some merge_bb) -> L.build_br merge_bb builder;
         (locals, local_func_decls, builder))
     | SContinue -> (match loop_info with
-      (None, _) -> raise(Failure("Continue error, this should not happen, lack branch target"))
+      (None, _) -> raise(Failure("continue error, this should not happen, lack branch target"))
     | (Some pred_bb, _) -> L.build_br pred_bb builder;
       (locals, local_func_decls, builder))
     | SReturn se -> 
