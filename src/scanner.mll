@@ -57,9 +57,10 @@ rule token = parse
 | "break"  { BREAK }
 | "return" { RETURN }
 (* Types *)
-| "int"    { INT }
+| "void"   { VOID }
 | "char"   { CHAR }
 | "bool"   { BOOL }
+| "int"    { INT }
 | "float"  { FLOAT }
 | "String" { STRING }
 | "struct" { STRUCT }

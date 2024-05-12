@@ -7,7 +7,7 @@ open Ast
 %token SEMI LPAREN RPAREN LBRACE RBRACE MUL DIV MOD PLUS MINUS ASSIGN INC DEC LSQBRACE RSQBRACE
 %token CONTINUE BREAK FOR FUNC ARROW
 %token NOT GE LE GT LT EQ NEQ AND OR
-%token IF ELIF ELSE WHILE INT CHAR BOOL FLOAT STRUCT ARRAY
+%token IF ELIF ELSE WHILE VOID CHAR BOOL INT FLOAT STRUCT ARRAY
 %token RETURN COMMA
 %token STRING
 %token NEW DELETE
@@ -54,9 +54,10 @@ typ_list:
   | typ                 { [$1]     }
   | typ COMMA typ_list  { $1 :: $3 }
 typ:
-    INT   { Int   }
+    VOID  { Void  }
   | CHAR  { Char  }
   | BOOL  { Bool  }
+  | INT   { Int   }
   | FLOAT { Float }
   | STRING { String }
   | STRUCTID { Struct $1 }

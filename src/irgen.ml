@@ -22,7 +22,9 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   let the_module = L.create_module context "cesame" in
 
   (* LLVM types *)
-  let i32_t      = L.i32_type       context (* integer *)
+
+  let void_t     = L.void_type      context (* void    *)
+  and i32_t      = L.i32_type       context (* integer *)
   and f64_t      = L.double_type    context (* float   *)
   and char_t     = L.i8_type        context (* Char    *)
   and char_pt    = L.pointer_type   (L.i8_type context) (* Char* *)
@@ -47,10 +49,11 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
 
   (* Return LLVM type for sast type *)
   let rec ltype_of_typ = function
-      Int     -> i32_t
-    | Float   -> f64_t
-    | Bool    -> bool_t
+      Void    -> void_t
     | Char    -> char_t
+    | Bool    -> bool_t
+    | Int     -> i32_t
+    | Float   -> f64_t
     | String  -> char_pt
     | Array t -> L.pointer_type (ltype_of_typ t)
     | Struct s ->
@@ -177,7 +180,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     | SCall (f, sel) -> (* fname: string, args: se list *)
       let func_ptr = func_addr_lookup func_decls f in 
       let func_args = List.rev (List.map (build_expr vars func_decls builder) (List.rev sel)) in
-      L.build_call func_ptr (Array.of_list func_args) (f ^ "_result") builder
+      L.build_call func_ptr (Array.of_list func_args) "" builder
     | SAccessMember _ | SAccessEle _ -> 
       let sub_ptr = var_addr_lookup vars func_decls builder sx in 
       L.build_load sub_ptr "tmp" builder
@@ -312,8 +315,8 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       (* Build the function body *)
       let new_builder = build_stmt_list vars func_locals func_decls func_local_func_decls (None, None) func_builder fd.sbody in
       let ret = (match fd.srtyp with 
-          Void -> L.build_ret_void 
-        | _ -> L.build_ret (L.const_int (ltype_of_typ fd.srtyp) 0) )
+          Void -> L.build_ret_void
+        | _ -> L.build_ret (L.const_int (ltype_of_typ fd.srtyp) 0))
       in
       ignore(add_terminal new_builder ret);
 

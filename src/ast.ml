@@ -99,7 +99,7 @@ let string_of_binop = function
   | Or    -> "||"
 
 let rec string_of_typ = function
-    Void        -> ""
+    Void        -> "void"
   | Char        -> "char"
   | Bool        -> "bool"
   | Int         -> "int"
