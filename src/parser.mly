@@ -4,7 +4,7 @@
 open Ast
 %}
 
-%token SEMI LPAREN RPAREN LBRACE RBRACE MUL DIV MOD PLUS MINUS ASSIGN INC DEC LSQBRACE RSQBRACE
+%token SEMI LPAREN RPAREN LBRACE RBRACE MUL DIV MOD PLUS MINUS ASSIGN PLUSEQ MINUSEQ MULEQ DIVEQ MODEQ INC DEC LSQBRACE RSQBRACE
 %token CONTINUE BREAK FOR FUNC ARROW
 %token NOT GE LE GT LT EQ NEQ AND OR
 %token IF ELIF ELSE WHILE VOID CHAR BOOL INT FLOAT STRUCT ARRAY
@@ -168,15 +168,20 @@ expr:
   | LBRACE dot_assign_list RBRACE { StructLit($2)  }
   | lvalue           { $1                          }
   | lvalue ASSIGN expr { Assign($1, $3)            }
+  | lvalue PLUSEQ expr { Assign($1, Binop($1, Add, $3))       }
+  | lvalue MINUSEQ expr { Assign($1, Binop($1, Sub, $3))      }
+  | lvalue MULEQ expr { Assign($1, Binop($1, Mul, $3))        }
+  | lvalue DIVEQ expr { Assign($1, Binop($1, Div, $3))        }
+  | lvalue MODEQ expr { Assign($1, Binop($1, Mod, $3))        }
   | lvalue INC       { Assign($1, Binop($1, Add, Literal(1))) }
   | lvalue DEC       { Assign($1, Binop($1, Sub, Literal(1))) }
   | NOT expr         { Unaop(Not, $2)              }
-  | expr MUL    expr { Binop($1, Mul,   $3)        }
-  | expr DIV    expr { Binop($1, Div,   $3)        }
-  | expr MOD    expr { Binop($1, Mod,   $3)        }
   | expr PLUS   expr { Binop($1, Add,   $3)        }
   | MINUS expr %prec MINUS { Unaop(Neg, $2)        }  
   | expr MINUS expr { Binop($1, Sub, $3)           } 
+  | expr MUL    expr { Binop($1, Mul,   $3)        }
+  | expr DIV    expr { Binop($1, Div,   $3)        }
+  | expr MOD    expr { Binop($1, Mod,   $3)        }
   | expr GE     expr { Binop($1, Ge,    $3)        }
   | expr LE     expr { Binop($1, Le,    $3)        }
   | expr GT     expr { Binop($1, Gt,    $3)        }
