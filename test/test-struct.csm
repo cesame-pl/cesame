@@ -1,20 +1,20 @@
 struct Student {
     String name;
     int age;
-    Array<String> courses;
+    //Array<String> courses;
 };
 
 // Student a = new Student;
 Student a;
 a.name = "Mike";
 a.age = 22;
-a.courses = ["math", "history", "cs"];
-a.courses[0] = "french";
+//a.courses = ["math", "history", "cs"];
+//a.courses[0] = "french";
 
 Student b;
 b.name = "Alice";
 b.age = 24;
-b.courses = ["plt", "os", "database"];
+//b.courses = ["plt", "os", "database"];
 
 /* Not yet supported */
 // c = new Student;
@@ -27,7 +27,8 @@ b.courses = ["plt", "os", "database"];
 Array<Student> students = [a, b];
 for (int i = 0; i < 2; i++) {
     for (int j = 0; j < 3; j++) {
-        print(students[i].courses[j]);
+        String s = students[1].name;
+        print(s);
     }
 }
 

@@ -1,6 +1,5 @@
 struct Student {
     String name;
-    int age;
     Array<String> courses;
 };
 
@@ -8,3 +7,8 @@ struct School {
     String name;
     Array<Student> all_students;
 };
+
+Student a;
+Student b;
+Array<Student> s = [a,b];
+a;
