@@ -165,6 +165,7 @@ expr:
   | FLIT             { FloatLit($1)                }
   | STRLIT           { StrLit($1)                  }
   | LSQBRACE elements RSQBRACE { New(ArrayLit($2)) }
+  | NEW LSQBRACE elements RSQBRACE { New(ArrayLit($3))        }
   | LBRACE dot_assign_list RBRACE { StructLit($2)  }
   | lvalue           { $1                          }
   | lvalue ASSIGN expr { Assign($1, $3)            }

@@ -1,7 +1,7 @@
 // 1d array
 Array<String> a;
 
-a = ["Hello", "Nice", "to", "See", "You"];
+a = new ["Hello", "Nice", "to", "See", "You"];
 for (int i = 0; i < 5; i++) {
     print(a[i]);
     print(' ');

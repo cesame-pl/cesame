@@ -1,7 +1,7 @@
-Array<int> a = [1, 2, 3];
-Array<int> b = [4, 5, 6];
+Array<int> a = new [1, 2, 3];
+Array<int> b = new [4, 5, 6];
 
-Array<Array<int>> c = [a, b];
+Array<Array<int>> c = new [a, b];
 for (int i = 0; i < 2; i++) {
     for (int j = 0; j < 3; j++) {
         println(c[i][j]);

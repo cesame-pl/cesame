@@ -1,2 +1,2 @@
-Array<int> a = ['e', 1, 'k'];
+Array<int> a = new ['e', 1, 'k'];
 delete a;
