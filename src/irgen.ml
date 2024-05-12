@@ -108,8 +108,8 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     | SStrLit (s)         -> L.build_global_stringptr s "str" builder
     | SNew(SArrayLit (l)) -> 
       let arr_size = List.length l and arr_type = ltype_of_typ t in
-      let arr_alloca = L.build_array_allo arr_type (L.const_int i32_t arr_size) "arr" builder in
-      let arr_ptr = L.build_pointercast arr_malloc arr_type "arr_ptr" builder in
+      let arr_alloca = L.build_array_malloc arr_type (L.const_int i32_t arr_size) "arr" builder in
+      let arr_ptr = L.build_pointercast arr_alloca arr_type "arr_ptr" builder in
       for i = 0 to arr_size - 1 do 
         (*let (element_type, element_sx) = (List.nth l i) in
         match element_type with
