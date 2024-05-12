@@ -97,13 +97,13 @@ let rec check_assign lvaluet rvaluet rexpr err =
           Array Void -> lvaluet (* TODO: Why Void? *)
         | _ -> raise (Failure err)
       )
-    | Struct str1 ->
-      match rvaluet with
+    | Struct str1 -> (
+      match rvaluet with 
         Struct str2 -> if (str1 = str2) then lvaluet else raise (Failure err)
       (* TODO: More check for StructLit *)
       (* Void is for StructLit. Check every dot_assign's lhs is in the struct decl, and of the correct typ *)
       | Void -> Struct str1
-      | _ -> raise (Failure err)
+      | _ -> raise (Failure err))
     | _ -> raise (Failure err)
 
 (* Recursive function to check expressions *)
