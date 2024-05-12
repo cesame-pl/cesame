@@ -1,0 +1,13 @@
+int s;
+
+Func main(int a, int b) -> int {
+    String s = "Hello, World!";
+    println(s);
+
+    return a + b;
+}
+
+s = 10;
+println(s);
+
+println(main(1, 2));

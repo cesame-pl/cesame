@@ -1,15 +1,25 @@
 Func main() -> int {
-    int x;
     int y = 1;
+    println("You can do loops like this!");
     for (int i = 1; ; ) {
-        int x = 1;
-        x = i;
-        int a = 123;
+        println("You can do loops like this!");
+        println(i);
+        if (i > 5){
+            break;
+        }
+        i++;
     }
+    println("Or this!");
     for (int i = 1; i < 5; i++) {
-        x = i;
+        println(i);
     }
-    for (int i = 1; ; i = i + 1) {
-        x = i;
+    println("Or this!");
+    for (int i = 1; ; i++) {
+        if (i < 5) {
+            println(i);
+        }
+        break;
     }
 }
+
+main();

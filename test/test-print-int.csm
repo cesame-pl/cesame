@@ -1,8 +1,0 @@
-print(1);
-int a;
-a = 2;
-print(a);
-int b = 3;
-print(b);
-int c = a + b;
-print(c);
