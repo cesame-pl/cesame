@@ -1,6 +1,6 @@
 (* Abstract Syntax Tree and functions for printing it *)
 
-type unaop = Not
+type unaop = Not | Neg
 type binop = Add | Sub | Mul | Div | Mod | Equal | Neq | Ge | Le | Gt | Lt | And | Or
 
 type typ = Void | Char | Bool | Int | Float | String
@@ -81,6 +81,7 @@ let remove_last s =
 
 let string_of_unaop = function
     Not   -> "!"
+  | Neg   -> "-"
 
 let string_of_binop = function
     Add   -> "+"

@@ -142,9 +142,13 @@ let rec check_expr e struct_map bind_list func_decl_list =
     in 
     check_array l
   | Id var -> (type_of_identifier var symbols, SId var)
-  | Unaop(op, e)->
+  | Unaop(op, e) ->
     (match op with 
-      Not -> check_bool_expr e struct_map bind_list func_decl_list)
+      Not -> (Bool, SUnaop(op, check_bool_expr e struct_map bind_list func_decl_list))
+    | Neg -> 
+      let e' = check_expr e struct_map bind_list func_decl_list in 
+      if (fst e') <> Int then raise (Failure "unary minus can only apply to integers")
+      else (Int, SUnaop(op, e')))
   | Binop(e1, op, e2) as e ->
     let (t1, e1') = check_expr e1 struct_map bind_list func_decl_list
     and (t2, e2') = check_expr e2 struct_map bind_list func_decl_list in

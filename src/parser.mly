@@ -174,7 +174,8 @@ expr:
   | expr DIV    expr { Binop($1, Div,   $3)        }
   | expr MOD    expr { Binop($1, Mod,   $3)        }
   | expr PLUS   expr { Binop($1, Add,   $3)        }
-  | expr MINUS  expr { Binop($1, Sub,   $3)        }
+  | MINUS expr %prec MINUS { Unaop(Neg, $2)        }  
+  | expr MINUS expr { Binop($1, Sub, $3)           } 
   | expr GE     expr { Binop($1, Ge,    $3)        }
   | expr LE     expr { Binop($1, Le,    $3)        }
   | expr GT     expr { Binop($1, Gt,    $3)        }

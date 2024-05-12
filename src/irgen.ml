@@ -116,7 +116,8 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     | SUnaop (op, se) ->
       let e' = build_expr vars func_decls builder se in 
       (match op with 
-        Not -> L.build_not e' "tmp" builder)
+        Not ->  L.build_not e' "tmp" builder
+      | Neg -> L.build_neg e' "tmp" builder)
     | SBinop (se1, op, se2) ->
       (* check if se1 and se2 are valid in semant *)
       (* print_string (string_of_sexpr((t,  SBinop(se1, op, se2)))); *)
