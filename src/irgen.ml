@@ -50,7 +50,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
   (* Return LLVM type for sast type *)
   let rec ltype_of_typ = function
       Void    -> void_t
-    | Char    -> char_t
+    | Char    -> char_pt
     | Bool    -> bool_t
     | Int     -> i32_t
     | Float   -> f64_t
@@ -84,6 +84,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       Int    -> "%d"
     | Float  -> "%g"
     | String -> "%s"
+    | Char   -> "%s"
     | _      -> raise (Failure "unsupported type for print")
   in
 
@@ -101,7 +102,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     match sx with
       Noexpr              -> L.const_int i32_t 0
     | SLiteral (i)        -> L.const_int i32_t i
-    | SCharLit (c)        -> L.const_int (ltype_of_typ Char) (Char.code c)
+    | SCharLit (c)        -> L.build_global_stringptr (String.make 1 c) "str" builder
     | SBoolLit (b)        -> L.const_int bool_t (if b then 1 else 0)
     | SFloatLit (f)       -> L.const_float f64_t f
     | SStrLit (s)         -> L.build_global_stringptr s "str" builder
