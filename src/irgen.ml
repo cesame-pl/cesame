@@ -60,6 +60,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let (_, sd) = struct_lookup s in
       let el_types = Array.of_list (List.map (fun (t, _) -> ltype_of_typ t) sd.body) in
       L.struct_type context el_types
+    | t -> raise(Failure(string_of_typ t ^ "has not been supported in irgen"))
   in
   (* Return LLVM const value for ast type; Used in struct var init *)
   let lconst_of_typ = function 
@@ -70,6 +71,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     | String ->  L.const_stringz context ""
     | Array t -> L.const_pointer_null (ltype_of_typ t)
     | Struct _ -> L.const_pointer_null (L.struct_type context [||])
+    | t -> raise(Failure("Constant of type " ^ string_of_typ t ^ " has not been supported in irgen."))
   in 
 
   (* Function to add a terminal instruction *)
@@ -150,7 +152,8 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
         | Ge    -> L.build_icmp L.Icmp.Sge
         | Le    -> L.build_icmp L.Icmp.Sle
         | Gt    -> L.build_icmp L.Icmp.Sgt
-        | Lt    -> L.build_icmp L.Icmp.Slt)
+        | Lt    -> L.build_icmp L.Icmp.Slt
+        | _     -> raise(Failure("Invalid bool expr, should not happen")))
       | Int ->
         (match op with 
           And   -> L.build_and
@@ -179,7 +182,8 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
         | Ge    -> L.build_fcmp L.Fcmp.Oge
         | Le    -> L.build_fcmp L.Fcmp.Ole
         | Gt    -> L.build_fcmp L.Fcmp.Ogt
-        | Lt    -> L.build_fcmp L.Fcmp.Olt) 
+        | Lt    -> L.build_fcmp L.Fcmp.Olt
+        | Mod   -> raise(Failure("Mod of float not supported"))) 
       | _ -> raise (Failure err)) e1' e2' "tmp" builder
     | SAssign (se1, se2) -> 
       let e1' = var_addr_lookup vars func_decls builder (snd se1) in 
@@ -197,7 +201,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     | SAccessMember _ | SAccessEle _ -> 
       let sub_ptr = var_addr_lookup vars func_decls builder sx in 
       L.build_load sub_ptr "tmp" builder
-
+    | se -> raise(Failure("TODO"))
   (* Helper function to look up variable from both the global and local scope (local first) *)
   (* Takes sx; Returns llvalue *)
   and var_addr_lookup vars func_decls builder sx : L.llvalue = 
@@ -216,7 +220,8 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
           build_expr vars func_decls builder se1) 
       in
       let e2' = build_expr vars func_decls builder se2 in
-      L.build_in_bounds_gep e1' [|e2'|] "tmp" builder)
+      L.build_in_bounds_gep e1' [|e2'|] "tmp" builder
+    | _ -> raise(Failure("Should not happen in var addr lookup")))
   (* Helper function to look up functions from both the global and local scope (local first) *)
   (* Takes string; Returns llvalue *)
   and func_addr_lookup func_decls fname : L.llvalue = StringMap.find fname func_decls 
@@ -249,10 +254,10 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       (new_locals, local_func_decls, builder)
 
     | SDelete se ->
-      let arr_type = ltype_of_typ Int in
+      (*let arr_type = ltype_of_typ Int in*)
       let ptr = build_expr vars func_decls builder se in
       (* let ptr_cast = L.build_pointercast ptr arr_type "arr_ptr" builder in *)
-      L.build_free ptr builder;
+      ignore(L.build_free ptr builder);
       (locals, local_func_decls, builder)
 
     | SBlock (sstmt_l) -> 
@@ -282,7 +287,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
     | SWhile (se, sst) -> 
       let pred_bb = L.append_block context "while" (func_of_builder builder) in 
       ignore(L.build_br pred_bb builder);
-      let body_bb = L.append_block context "while_body" (func_of_builder builder) in body_bb; 
+      let body_bb = L.append_block context "while_body" (func_of_builder builder) in ignore(body_bb); 
       let pred_builder = L.builder_at_end context pred_bb in 
       let bool_val = build_expr vars func_decls pred_builder se in 
       let merge_bb = L.append_block context "merge" (func_of_builder builder) in ignore(L.build_cond_br bool_val body_bb merge_bb pred_builder);
@@ -338,11 +343,11 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       (locals, new_local_func_decls, builder)
     | SBreak -> (match loop_info with
         (_, None) -> raise(Failure("break error, this should not happen, lack branch target"))
-      | (_, Some merge_bb) -> L.build_br merge_bb builder;
+      | (_, Some merge_bb) -> ignore(L.build_br merge_bb builder);
         (locals, local_func_decls, builder))
     | SContinue -> (match loop_info with
       (None, _) -> raise(Failure("continue error, this should not happen, lack branch target"))
-    | (Some pred_bb, _) -> L.build_br pred_bb builder;
+    | (Some pred_bb, _) -> ignore(L.build_br pred_bb builder);
       (locals, local_func_decls, builder))
     | SReturn se -> 
       ignore(L.build_ret (build_expr vars func_decls builder se) builder);
