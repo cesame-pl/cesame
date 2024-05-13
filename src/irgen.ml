@@ -300,16 +300,16 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       (let init_stmt = match init with 
           Some s -> s
         | None -> SExpr(Void, Noexpr) 
-      in init_stmt;
+      in ignore(init_stmt);
       (*build init*)
       let init_bb = L.append_block context "init_for" (func_of_builder builder) in
-      let _ = L.build_br init_bb builder in init_bb; (*build entry to init for*)
-      let init_builder = L.builder_at_end context init_bb in init_builder;
-      let (for_locals, _, _) = build_stmt (combine_maps globals locals) StringMap.empty (combine_maps global_func_decls local_func_decls) StringMap.empty (None, None) init_builder init_stmt in for_locals;
+      let _ = L.build_br init_bb builder in ignore(init_bb); (*build entry to init for*)
+      let init_builder = L.builder_at_end context init_bb in ignore(init_builder);
+      let (for_locals, _, _) = build_stmt (combine_maps globals locals) StringMap.empty (combine_maps global_func_decls local_func_decls) StringMap.empty (None, None) init_builder init_stmt in ignore(for_locals);
       let end_cond_expr = match end_cond with
           Some e -> e
         | None -> (Bool, SBoolLit(true)) (*No test because there is no break*)
-      in end_cond_expr;
+      in ignore(end_cond_expr);
       (*build end condition*)
       let pred_bb = L.append_block context "pred_for" (func_of_builder builder) in ignore(pred_bb);
       let _ = L.build_br pred_bb init_builder in  (*init will branch to pred_bb, init block completed*)
@@ -319,7 +319,7 @@ let translate (program: struct_decl list * sstmt list) : Llvm.llmodule =
       let merge_bb = L.append_block context "merge" (func_of_builder builder) in ignore(L.build_cond_br bool_val body_bb merge_bb pred_builder); (*pred_bb has two ways for entering: one is from trans_bb, the other is from init_bb, it has a conditional branch end, to merge or to body*)
       let trans_stmt = match trans_exp with
           Some s -> s
-        | None -> (Void, Noexpr) in trans_stmt;
+        | None -> (Void, Noexpr) in ignore(trans_stmt);
       let trans_bb = L.append_block context "trans_for" (func_of_builder builder) in ignore(trans_bb);
       let for_body_builder = L.builder_at_end context body_bb in 
       let (_, _, new_for_body_builder) = build_stmt (combine_maps vars for_locals) StringMap.empty (combine_maps global_func_decls local_func_decls) StringMap.empty (Some trans_bb, Some merge_bb) for_body_builder sstmt_list in add_terminal new_for_body_builder (L.build_br trans_bb); (*pred is the only way to enter for body and trans is the only way out*)
