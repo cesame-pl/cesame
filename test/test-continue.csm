@@ -1,0 +1,9 @@
+println("Integer greater than 5 and less than 10: ");
+
+for (int i = 0; i < 10; i++) {
+    if (i <= 5) {
+        continue;
+    }
+
+    println(i);
+}

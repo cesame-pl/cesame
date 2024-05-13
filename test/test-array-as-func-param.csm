@@ -1,0 +1,13 @@
+Func print_arr(Array<String> a, int size) -> int {
+    for (int i = 0; i < size; i++) {
+        print(a[i]);
+        print(" ");
+    }
+    return 0;
+}
+
+Array<String> greeting = new ["Hello", "Cesame"];
+
+print_arr(greeting, 2);
+
+delete greeting;
