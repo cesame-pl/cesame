@@ -6,7 +6,7 @@ Func main() -> int {
 
     /* if (elif)+ (else)* is supported */
 
-    if (x == 1) {
+    if (x == 1 && y == 2) {
         y = 3;
     } elif (x == 2) {
         y = 2;
@@ -17,7 +17,7 @@ Func main() -> int {
     }
     println(y);
     
-    if (x == 1) {
+    if (x == 1 || y == 3) {
         y = 100;
     } else {
         y = 0;
