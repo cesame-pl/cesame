@@ -6,5 +6,5 @@ struct Student {
 
 struct School {
     String name;
-    Array<Student> all_students;
+    Array<Student> students;
 };

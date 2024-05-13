@@ -1,5 +1,0 @@
-Array<int> a = [1, 2, 3];
-a[0] = a[0] * 2;
-
-Array<Array<String>> strs = [["1", "2"], ["3", "4"]];
-strs[0][1] = "6";

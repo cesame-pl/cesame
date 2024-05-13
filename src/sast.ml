@@ -5,27 +5,27 @@ open Ast
 type sexpr = (typ * sx)
 and sx =
     Noexpr
-  | SLiteral of int
   | SCharLit of char
   | SBoolLit of bool
+  | SLiteral of int
   | SFloatLit of float
   | SStrLit of string
   | SStructLit of (string * sexpr) list
-  | SArrayLit of sexpr list
+  | SNew of snewable 
+  | SAnonFunc of sfunc_def
   | SId of string
   | SUnaop of unaop * sexpr
   | SBinop of sexpr * binop * sexpr
   | SAssign of sexpr * sexpr
   (* call *)
   | SCall of string * sexpr list
-  | SNew of snewable
   | SAccessMember of sexpr * sexpr
   | SAccessEle of sexpr * sexpr (* The second sexpr can be only be of int type, so can be an expr *)
 
 and snewable = 
-  SNewStruct of string
+  SArrayLit of sexpr list
 
-type sstmt =
+and sstmt =
     SBlock of sstmt list
   | SExpr of sexpr
   (* | SIf of sexpr * sstmt * sstmt *)
@@ -33,9 +33,11 @@ type sstmt =
   | SFor of (sstmt option) * (sexpr option) * (sexpr option) * (sstmt)
   | SWhile of sexpr * sstmt
   | SVDecl of typ * string * sexpr option
-  | SDelete of string
+  | SDelete of sexpr
   | SFDef of sfunc_def
   | SReturn of sexpr
+  | SBreak
+  | SContinue
 
 (* func_def: ret_typ fname params body *)
 and sfunc_def = {
@@ -57,24 +59,28 @@ let rec string_of_sexpr (t, e) =
   "(" ^ string_of_typ t ^ " : " ^ 
   (match e with
     Noexpr -> ""
-  | SLiteral (l) -> string_of_int l
   | SCharLit (c) -> "'" ^ Char.escaped c ^ "'"
   | SBoolLit (true) -> "true"
   | SBoolLit (false) -> "false"
+  | SLiteral (l) -> string_of_int l
   | SFloatLit (f) -> string_of_float f
-  | SStructLit (assign_list) -> "{ " ^ String.concat ", " (List.map string_of_sdot_assign assign_list) ^ " }"
   | SStrLit (s) -> "\"" ^ String.escaped s ^ "\""
-  | SArrayLit (a) -> let rec string_of_list a = match a with
+  | SStructLit (assign_list) -> 
+    "{ " ^ String.concat ", " (List.map string_of_sdot_assign assign_list) ^ " }"
+  | SNew(SArrayLit (a)) ->
+    let rec string_of_list a = match a with
         [] -> ""
       | [element] -> string_of_sexpr element
       | hd :: tl -> (string_of_sexpr hd) ^ ", " ^ (string_of_list tl) 
     in "[" ^ string_of_list a ^ "]"
+  | SAnonFunc (f) ->
+    "(" ^ String.concat ", " (List.map snd f.sparams) ^ ") -> " ^ 
+    (string_of_typ f.srtyp) ^ " " ^ remove_last (string_of_sstmt(SBlock(f.sbody)))
   | SId (s) -> s
   | SUnaop (o, e) -> string_of_unaop o ^ string_of_sexpr e
   | SBinop (e1, o, e2) -> string_of_sexpr e1 ^ " " ^ string_of_binop o ^ " " ^ string_of_sexpr e2
   | SAssign (e1, e2) -> string_of_sexpr e1 ^ " = " ^ string_of_sexpr e2
   | SCall (f, el) -> f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
-  | SNew (n) -> string_of_snewable n
   | SAccessMember (e1, e2) -> string_of_sexpr e1 ^ "." ^ string_of_sexpr e2
   | SAccessEle (e1, e2) -> string_of_sexpr e1 ^ "[" ^ string_of_sexpr e2 ^ "]") ^ 
   ")"
@@ -82,10 +88,7 @@ let rec string_of_sexpr (t, e) =
 and string_of_sdot_assign = function
 | (l, r) ->  "." ^ l ^ " = " ^ (string_of_sexpr r)
 
-and string_of_snewable = function
-  | SNewStruct (s) -> "new " ^ s
-
-let rec string_of_sstmt = function
+and string_of_sstmt = function
     SBlock (sstmts) -> "{\n" ^ string_of_sstmt_list sstmts ^ "}\n"
   | SExpr (e)       -> string_of_sexpr e ^ ";\n"
   | SIf (l, s)      -> 
@@ -101,9 +104,11 @@ let rec string_of_sstmt = function
   | SVDecl (t, id, opt_expr) -> 
     string_of_typ t ^ " " ^ id ^
     (match opt_expr with None -> "" | Some(opt) -> " = " ^ string_of_sexpr opt) ^ ";\n"
-  | SDelete(s)     -> string_of_stmt(Delete(s))
+  | SDelete(s)     -> "delete " ^ string_of_sexpr s ^ ";\n"
   | SFDef(f)       -> string_of_sfdef f
   | SReturn(e)     -> "return " ^ string_of_sexpr e ^ ";\n"
+  | SBreak         -> "break;\n"
+  | SContinue      -> "continue;\n"
 
 and string_of_opt_sexpr = function
     None -> ""
@@ -122,5 +127,5 @@ and string_of_sfdef fdef =
   string_of_sstmt(SBlock(fdef.sbody))
 
 let string_of_sprogram (sstruct_decls, sstmts) =
-  "\n\nSementically checked program: \n\n" ^
+  "\n\nSemantically checked program: \n\n" ^
   string_of_struct_decl_list sstruct_decls ^ string_of_sstmt_list sstmts

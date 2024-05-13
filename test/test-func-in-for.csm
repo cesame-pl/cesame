@@ -1,0 +1,10 @@
+int sum = 0;
+
+for (int i = 0 ; i < 10; i++) {
+    Func add(int x, int y) -> int {
+        return x + y;
+    }
+
+    sum = add(sum, i);
+    println(sum);
+}

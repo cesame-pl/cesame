@@ -9,9 +9,8 @@ let letter = lletter | uletter
 let heading_spaces = ('\r' | '\n' | "\r\n") [' ' '\t']*
 
 let exp = ('e'|'E')
-let sign = ('+'|'-')
 let digit = ['0'-'9']
-let int = sign? digit+
+let int = digit+
 let float = (
   int? '.' digit+ (exp int)? |
   int '.' digit* (exp int)? |
@@ -33,11 +32,11 @@ rule token = parse
 (* Operators *)
 | "++"     { INC }
 | "--"     { DEC }
-| '+'      { PLUS }
-| '-'      { MINUS }
-| '*'      { MUL }
-| '/'      { DIV }
-| '%'      { MOD }
+| "+="     { PLUSEQ }
+| "-="     { MINUSEQ }
+| "*="     { MULEQ }
+| "/="     { DIVEQ }
+| "%="     { MODEQ }
 | "=="     { EQ }
 | "!="     { NEQ }
 | '!'      { NOT } (* Not(!) needs to go after NEQ(!=) *)
@@ -48,6 +47,11 @@ rule token = parse
 | "&&"     { AND }
 | "||"     { OR }
 | '='      { ASSIGN } (* Assign(=) needs to go after EQ(==) *)
+| '+'      { PLUS }
+| '-'      { MINUS }
+| '*'      { MUL }
+| '/'      { DIV }
+| '%'      { MOD }
 (* Control Flow *)
 | "if"     { IF }
 | "else"   { ELSE }
@@ -58,9 +62,10 @@ rule token = parse
 | "break"  { BREAK }
 | "return" { RETURN }
 (* Types *)
-| "int"    { INT }
+| "void"   { VOID }
 | "char"   { CHAR }
 | "bool"   { BOOL }
+| "int"    { INT }
 | "float"  { FLOAT }
 | "String" { STRING }
 | "struct" { STRUCT }
@@ -86,7 +91,7 @@ rule token = parse
           | 't' -> '\t'
           | '\\' -> '\\'
           | '\'' -> '\''
-          | _ -> raise (Failure "Not Exists")
+          | _ -> raise (Failure "does not exist")
   in CLIT(c)  }
 | '"'      { let s = "" in strparse s lexbuf }
 
@@ -95,9 +100,11 @@ rule token = parse
 
 and gcomment = parse
   "*/" { token lexbuf }
+| eof  { token lexbuf }
 | _    { gcomment lexbuf }
 and lcomment = parse 
   '\n' { token lexbuf }
+| eof  { token lexbuf }
 | _    { lcomment lexbuf }
 
 and strparse s = parse

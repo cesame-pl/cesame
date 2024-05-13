@@ -1,0 +1,24 @@
+// Basic arithmetic operations
+println(1);
+println(-1);
+println(2* 4);
+println(9 -1);
+println(9 % 4);
+println(4/ 3);
+println(8 * 2 - 4);
+
+int b = 10;
+b *= 10 + 2;
+println(b);
+
+b += 10;
+println(b);
+
+b %= 20;
+println(b);
+
+b -= 100;
+println(b);
+
+b /= 2;
+print(b);

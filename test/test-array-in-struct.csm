@@ -1,0 +1,19 @@
+struct Student {
+    String name;
+    int age;
+    Array<String> courses;
+};
+
+Student a;
+a.name = "Mike";
+a.age = 22;
+a.courses = ["math", "history", "cs"];
+a.courses[0] = "french";
+
+print("Mike's courses: ");
+for (int i = 0; i < 3; i++) {
+    print(a.courses[i]);
+    if (i!= 2) {
+        print(", ");
+    }
+}

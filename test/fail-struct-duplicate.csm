@@ -1,0 +1,9 @@
+struct Student {
+    String name;
+    int age;
+};
+
+// Duplicate struct student
+struct Student {
+    Array<String> courses;
+};

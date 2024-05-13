@@ -1,0 +1,8 @@
+int a = 0;
+
+// Student should be on the top of the file (before any statements)
+struct Student {
+    String name;
+    int age;
+    Array<String> courses;
+};

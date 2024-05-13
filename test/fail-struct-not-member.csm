@@ -1,0 +1,8 @@
+struct Student {
+    String name;
+    int age;
+    Array<String> courses;
+};
+
+Student a;
+a.gpa = 4.0; // Invalid member not defined in struct
