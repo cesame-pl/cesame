@@ -127,5 +127,5 @@ and string_of_sfdef fdef =
   string_of_sstmt(SBlock(fdef.sbody))
 
 let string_of_sprogram (sstruct_decls, sstmts) =
-  "\n\nSementically checked program: \n\n" ^
+  "\n\nSemantically checked program: \n\n" ^
   string_of_struct_decl_list sstruct_decls ^ string_of_sstmt_list sstmts
