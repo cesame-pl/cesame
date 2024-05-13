@@ -12,7 +12,7 @@ LLI := lli
 
 # Build targets
 .PHONY : all
-all : clean cesame test run_lli
+all : clean cesame test run_lli summary
 
 .PHONY : cesame
 cesame : 
@@ -23,6 +23,7 @@ cesame :
 # Test different flags and files
 .PHONY: test
 test: cesame
+	@echo "Testing cesame with different flags and files..."
 	@$(foreach flag,$(FLAGS), \
 		mkdir -p $(OUT_DIR)$(flag); \
 		$(foreach file,$(wildcard $(TEST_DIR)/*.csm), \
@@ -45,6 +46,17 @@ run_lli: test
 			cp $$file $(TEST_DIR); \
 		fi \
 	done
+
+# Summary target
+.PHONY: summary
+summary: run_lli
+	@EXPECTED_PASS=$$(ls $(TEST_DIR)/test*.csm 2>/dev/null | wc -l); \
+	EXPECTED_FAIL=$$(ls $(TEST_DIR)/fail*.csm 2>/dev/null | wc -l); \
+	ACTUAL_PASS=$$(ls $(TEST_DIR)/*.out 2>/dev/null | wc -l); \
+	ACTUAL_FAIL=$$(ls $(TEST_DIR)/*.err 2>/dev/null | wc -l); \
+	echo "\nSummary:"; \
+	echo "Failed Cases - Actual: $$ACTUAL_FAIL; Expected: $$EXPECTED_FAIL"; \
+	echo "Passed Cases - Actual: $$ACTUAL_PASS; Expected: $$EXPECTED_PASS"
 
 # Clean output files on all dirs
 .PHONY : clean
