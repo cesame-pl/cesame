@@ -1,0 +1,30 @@
+Func max_element(Array<int> arr, int n)->int {
+    int max = arr[0];
+    for (int i = 1; i < n; i++) {
+        if (arr[i] > max) {
+            max = arr[i];
+        }
+    }
+    return max;
+}
+
+Func minEatingSpeed(Array<int> piles, int n, int h) ->int {
+    int left = 1;
+    int right = max_element(piles, n);
+    while (left < right) {
+        int mid = left + ((right - left) / 2);
+        int hours = 0;
+        for (int i = 0; i < n; i++) {
+            hours += ((piles[i] + mid - 1) / mid);
+        }
+        if (hours <= h) {
+            right = mid;
+        } else {
+            left = mid + 1;
+        }
+    }
+    return left;
+}
+
+Array<int> piles = [3, 6, 7, 11];
+println(minEatingSpeed(piles, 4, 8));
