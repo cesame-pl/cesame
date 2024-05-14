@@ -1,0 +1,31 @@
+int int_max = 100000;
+
+// Coin Change
+int amount = 5;                // An integer amount representing a total amount of money.             
+Array<int> coins = new [1, 2]; // An integer array coins representing coins of different denominations
+int coin_length = 2;           // Length of array coins
+
+// Calculate the fewest number of coins that you need to make up that amount.
+Array<int> dp = new [0, 0, 0, 0, 0, 0];
+for (int i = 1; i < amount + 1; i++) {
+    dp[i] = int_max;
+
+    for (int j = 0; j < coin_length; j++){
+        if ((i - coins[j]) >= 0){
+            if (dp[i] > dp[i - coins[j]] + 1) {
+                dp[i] = dp[i - coins[j]] + 1;
+            }
+        }
+    }
+}
+
+// Print out the result.
+if (dp[amount] == int_max) {
+    println("The amount of money cannot be made up by any combination of the coins");
+} else {
+    print("the fewest number of coins that you need to make up that amount: ");
+    println(dp[amount]);
+}
+
+delete coins;
+delete dp;
